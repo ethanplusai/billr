@@ -10,6 +10,9 @@ Third-party and in-house assets bundled in app/public:
     app/public/agents/README.md. The marks identify compatible products and
     imply no endorsement or partnership; they remain the trademarks of their
     respective owners.
+  - The GitHub sign-in mark in app/src/components/auth/oauth-sign-in.tsx is
+    GitHub's mark from Octicons under the MIT License; it remains GitHub's
+    trademark. The license text is in app/public/auth/OCTICONS-LICENSE.
   - cursor.svg, chatgpt.svg and app/public/auth/google.svg are neutral in-house
     glyphs, not vendor logos, and reproduce no trademark. See
     app/public/agents/README.md and app/public/auth/README.md.
