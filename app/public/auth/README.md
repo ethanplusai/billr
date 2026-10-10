@@ -6,5 +6,6 @@ labels the "Continue with Google" button in
 `src/components/auth/oauth-sign-in.tsx`. Replace it only with a mark Google
 licenses for this use.
 
-GitHub has no file here. That button uses the `Github` icon from
-`lucide-react`, which is already a dependency.
+The GitHub button has no image file. It draws GitHub's mark inline, taken from
+Octicons (`mark-github`, MIT License, license text in `OCTICONS-LICENSE`),
+as GitHub's logo guidelines allow for signing in with GitHub.
