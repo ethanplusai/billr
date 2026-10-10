@@ -3,6 +3,7 @@
 import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import type { Database } from '@/types/database'
 import { failure, type WriteResult } from './result'
 import {
   LOGO_URL_MESSAGE,
@@ -29,7 +30,7 @@ const profileInput = z.object({
   city: z.string().trim().max(100).nullish(),
   state: z.string().trim().max(100).nullish(),
   postal_code: z.string().trim().max(30).nullish(),
-  country: z.string().trim().max(100).nullish(),
+  country: z.string().trim().max(100).optional(),
   tax_id: z.string().trim().max(100).nullish(),
 })
 
@@ -62,7 +63,7 @@ export type BrandingInput = z.input<typeof brandingInput>
 
 async function patchBusiness(
   businessId: string,
-  patch: Record<string, unknown>,
+  patch: Database['public']['Tables']['businesses']['Update'],
 ): Promise<WriteResult> {
   const supabase = await createClient()
   const { data, error } = await supabase
