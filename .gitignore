@@ -1,0 +1,14 @@
+node_modules/
+.next/
+dist/
+coverage/
+.env
+.env.*
+!.env.example
+.self-host/
+.vercel/
+.DS_Store
+*.log
+*.tsbuildinfo
+**/supabase/.temp/
+**/supabase/.branches/

@@ -1,0 +1,9 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
+  "mcpServers": {
+    "billr": {
+      "type": "streamable-http",
+      "url": "http://localhost:3000/api/mcp"
+    }
+  }
+}

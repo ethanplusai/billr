@@ -1,0 +1,43 @@
+{
+  "name": "billr",
+  "version": "1.1.0",
+  "description": "Bill clients through Billr: log billable time and expenses, draft invoices and estimates, check balances and unbilled work, run agent task billing sessions, and work engagement schedules. Reads freely, drafts on request, and never sends anything to a client.",
+  "author": {
+    "name": "Billr",
+    "url": "https://github.com/ethanplusai/billr"
+  },
+  "homepage": "https://github.com/ethanplusai/billr/blob/main/plugins/README.md",
+  "repository": "https://github.com/ethanplusai/billr",
+  "license": "Apache-2.0",
+  "keywords": [
+    "invoicing",
+    "billing",
+    "time-tracking",
+    "estimates",
+    "freelance"
+  ],
+  "interface": {
+    "displayName": "Billr",
+    "shortDescription": "Invoices, time and payments",
+    "longDescription": "Billr is invoicing for independent operators and small studios, built so an agent can do the paperwork. Ask what is unpaid or ready to bill, log time and expenses, draft invoices and estimates, and see them as cards right in the conversation. Billr reads freely and drafts on request. Nothing is sent to a client, charged or deleted unless you ask for it and the connection you approved allows it.",
+    "developerName": "Billr",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "websiteURL": "https://github.com/ethanplusai/billr",
+    "defaultPrompt": [
+      "What is ready to bill today in Billr?",
+      "Show my unpaid and overdue invoices in Billr.",
+      "Log 3 hours for Harbor & Lane in Billr: homepage redesign."
+    ],
+    "brandColor": "#2563EB",
+    "composerIcon": "./assets/icon.png",
+    "logo": "./assets/logo.png",
+    "supportURL": "https://github.com/ethanplusai/billr/issues",
+    "screenshots": []
+  },
+  "mcpServers": "./.mcp.json",
+  "skills": "./skills/"
+}

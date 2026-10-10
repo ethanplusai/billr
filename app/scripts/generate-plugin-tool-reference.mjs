@@ -1,0 +1,287 @@
+#!/usr/bin/env node
+/**
+ * Generates every derived file under `plugins/`.
+ *
+ * Two things are generated here and must never be hand-edited:
+ *
+ * 1. `plugins/shared/skill/references/tools.md`, built from
+ *    `packages/agent-kit/src/tool-contracts.json` (the registered tool surface,
+ *    with each tool's real title, description and input schema),
+ *    `packages/agent-kit/src/tool-catalog.ts` (the human-facing grouping) and
+ *    `app/src/lib/mcp/permissions.ts` (which permission each tool needs). A
+ *    hand-maintained tool list went stale once and advertised a tool that never
+ *    existed; this repository does not do that again.
+ *
+ * 2. The per-platform copies of the shared skill. `plugins/shared/skill/` is
+ *    the single source. Claude Code, Codex and OpenClaw each need the same
+ *    text in their own layout, and Cursor needs it as `.mdc` rules with
+ *    different frontmatter, so the copies are made here rather than by hand.
+ *
+ * Usage:
+ *   node app/scripts/generate-plugin-tool-reference.mjs           # write
+ *   node app/scripts/generate-plugin-tool-reference.mjs --check   # verify only
+ *
+ * `--check` writes nothing and exits non-zero when anything on disk differs
+ * from what would be generated. That is what the test runs.
+ */
+import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
+import { resolve, dirname } from 'node:path'
+import { fileURLToPath, pathToFileURL } from 'node:url'
+
+const root = fileURLToPath(new URL('../../', import.meta.url))
+const GENERATOR = 'app/scripts/generate-plugin-tool-reference.mjs'
+const SHARED = 'plugins/shared/skill'
+
+const read = (p) => readFileSync(resolve(root, p), 'utf8')
+
+/** Every single-quoted string inside a fragment of the TypeScript sources. */
+function quoted(fragment) {
+  return [...fragment.matchAll(/'((?:[^'\\]|\\.)*)'/g)].map((m) =>
+    m[1].replace(/\\'/g, "'"),
+  )
+}
+
+/**
+ * The human-facing grouping, parsed out of the agent-kit copy of the tool
+ * catalog. Parsing rather than importing keeps this script free of a
+ * TypeScript loader and of any Node version that does or does not strip types.
+ * Every parse result is asserted against the contracts below, so a shape this
+ * parser stops understanding fails loudly instead of silently emptying a file.
+ */
+function toolGroups() {
+  const src = read('packages/agent-kit/src/tool-catalog.ts')
+  const groups = [
+    ...src.matchAll(
+      /\{\s*name:\s*'((?:[^'\\]|\\.)*)',\s*blurb:\s*'((?:[^'\\]|\\.)*)',\s*tools:\s*\[([\s\S]*?)\]/g,
+    ),
+  ].map((m) => ({
+    name: m[1].replace(/\\'/g, "'"),
+    blurb: m[2].replace(/\\'/g, "'"),
+    tools: quoted(m[3]),
+  }))
+  if (!groups.length) throw Error('Parsed no tool groups from the tool catalog')
+  return groups
+}
+
+/** Which permission each tool needs, parsed out of the MCP permission gate. */
+function toolPermissions() {
+  const src = read('app/src/lib/mcp/permissions.ts')
+  const permissions = new Map()
+  for (const [, name, body] of src.matchAll(
+    /const (reads|writes) = new Set\(\[([\s\S]*?)\]\)/g,
+  ))
+    for (const tool of quoted(body))
+      permissions.set(tool, name === 'reads' ? 'read' : 'write')
+  // The tail of toolPermission() handles send, delete and payments as
+  // explicit comparisons rather than sets.
+  for (const [, condition, permission] of src.matchAll(
+    /if \(([^)]*name ===[^)]*)\) return '(\w+)'/g,
+  ))
+    for (const tool of quoted(condition)) permissions.set(tool, permission)
+  if (!permissions.size)
+    throw Error('Parsed no tool permissions from the permission gate')
+  return permissions
+}
+
+function contracts() {
+  const parsed = JSON.parse(read('packages/agent-kit/src/tool-contracts.json'))
+  if (!Array.isArray(parsed) || !parsed.length)
+    throw Error('Tool contracts are empty')
+  return parsed
+}
+
+const PERMISSION_NOTE = {
+  read: 'read',
+  write: 'write',
+  send: 'send (puts a document in front of a client)',
+  payments: 'payments (moves recorded money)',
+  delete: 'delete (removes a record)',
+}
+
+function toolsMarkdown() {
+  const groups = toolGroups()
+  const permissions = toolPermissions()
+  const byName = new Map(contracts().map((tool) => [tool.name, tool]))
+
+  const grouped = groups.flatMap((g) => g.tools)
+  const duplicates = grouped.filter((n, i) => grouped.indexOf(n) !== i)
+  if (duplicates.length)
+    throw Error(`Tool listed in more than one group: ${duplicates.join(', ')}`)
+  const missing = grouped.filter((n) => !byName.has(n))
+  if (missing.length)
+    throw Error(`Catalog advertises tools with no contract: ${missing.join(', ')}`)
+  const unlisted = [...byName.keys()].filter((n) => !grouped.includes(n))
+  if (unlisted.length)
+    throw Error(`Tools with a contract but no catalog group: ${unlisted.join(', ')}`)
+  const unpermissioned = grouped.filter((n) => !permissions.has(n))
+  if (unpermissioned.length)
+    throw Error(`Tools with no permission mapping: ${unpermissioned.join(', ')}`)
+
+  const lines = [
+    '# Billr MCP tools',
+    '',
+    `<!-- Generated by ${GENERATOR}. Do not edit. -->`,
+    '',
+    `Every tool the Billr MCP server registers: ${grouped.length} of them, in the`,
+    'groups the app itself uses. Titles, descriptions and inputs come straight',
+    'from the registered tool contracts, so nothing here can advertise a tool',
+    'that does not exist.',
+    '',
+    'The **Needs** column is the permission the connection must have been',
+    'granted. A tool you cannot see was not granted; say so rather than working',
+    'around it.',
+    '',
+    '`request_id` appears on write tools for idempotency: generate a fresh UUID',
+    'per intended operation, and reuse the same one with identical input when',
+    'retrying a call that may have half landed.',
+    '',
+    '## Contents',
+    '',
+  ]
+  for (const group of groups)
+    lines.push(
+      `- [${group.name}](#${group.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}) (${group.tools.length})`,
+    )
+
+  for (const group of groups) {
+    lines.push('', `## ${group.name}`, '', group.blurb, '')
+    lines.push('| Tool | Needs | Required input |', '| --- | --- | --- |')
+    for (const name of group.tools) {
+      const required = byName.get(name).inputSchema?.required ?? []
+      lines.push(
+        `| \`${name}\` | ${permissions.get(name)} | ${
+          required.length ? required.map((r) => `\`${r}\``).join(', ') : 'none'
+        } |`,
+      )
+    }
+    for (const name of group.tools) {
+      const tool = byName.get(name)
+      const schema = tool.inputSchema ?? {}
+      const required = schema.required ?? []
+      const optional = Object.keys(schema.properties ?? {}).filter(
+        (p) => !required.includes(p),
+      )
+      lines.push(
+        '',
+        `### \`${name}\``,
+        '',
+        `*${tool.title ?? name}*, needs **${PERMISSION_NOTE[permissions.get(name)]}**.`,
+        '',
+        (tool.description ?? '').trim(),
+        '',
+        `- Required: ${required.length ? required.map((r) => `\`${r}\``).join(', ') : 'nothing'}`,
+        `- Optional: ${optional.length ? optional.map((o) => `\`${o}\``).join(', ') : 'nothing'}`,
+      )
+    }
+  }
+  lines.push('')
+  const markdown = lines.join('\n')
+  // House rule: no em-dashes in anything Billr ships. A tool description that
+  // grows one upstream is caught here rather than in a published package.
+  if (markdown.includes('\u2014'))
+    throw Error('Generated tool reference contains an em-dash')
+  return markdown
+}
+
+/** Split a markdown file into its YAML frontmatter and its body. */
+function split(text) {
+  const match = text.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/)
+  if (!match) throw Error('Expected YAML frontmatter')
+  return { frontmatter: match[1], body: match[2] }
+}
+
+function stamped(text, sourcePath) {
+  const { frontmatter, body } = split(text)
+  return `---\n${frontmatter}\n---\n\n<!-- Generated by ${GENERATOR} from ${sourcePath}. Do not edit; edit the source and re-run the generator. -->\n${body.replace(/^\n+/, '\n')}`
+}
+
+/** A Cursor rule: same body, Cursor's own frontmatter fields. */
+function cursorRule(text, sourcePath, description) {
+  const { body } = split(text)
+  return `---\ndescription: ${description}\nalwaysApply: false\n---\n\n<!-- Generated by ${GENERATOR} from ${sourcePath}. Do not edit; edit the source and re-run the generator. -->\n${body.replace(/^\n+/, '\n')}`
+}
+
+/** Every file this script owns, as path -> contents. */
+export function generatedFiles() {
+  const files = new Map()
+  files.set(`${SHARED}/references/tools.md`, toolsMarkdown())
+
+  const skill = read(`${SHARED}/SKILL.md`)
+  const workflows = read(`${SHARED}/references/workflows.md`)
+  const tools = files.get(`${SHARED}/references/tools.md`)
+
+  // Claude Code and Codex both use skills/<name>/SKILL.md with references
+  // alongside. OpenClaw is a bare skill folder.
+  for (const dir of [
+    'plugins/claude-code/billr/skills/billr',
+    'plugins/codex/billr/skills/billr',
+    'plugins/openclaw/billr',
+  ]) {
+    files.set(`${dir}/SKILL.md`, stamped(skill, `${SHARED}/SKILL.md`))
+    files.set(
+      `${dir}/references/workflows.md`,
+      `<!-- Generated by ${GENERATOR} from ${SHARED}/references/workflows.md. Do not edit. -->\n\n${workflows}`,
+    )
+    files.set(`${dir}/references/tools.md`, tools)
+  }
+
+  // Cursor rules are single .mdc files with Cursor's own frontmatter.
+  files.set(
+    'plugins/cursor/rules/billr.mdc',
+    cursorRule(
+      skill,
+      `${SHARED}/SKILL.md`,
+      'How to use the Billr MCP server: log billable time, draft invoices and estimates, check balances and unbilled work, run task billing sessions and engagements. Reads freely, drafts on request, never sends to a client.',
+    ),
+  )
+  files.set(
+    'plugins/cursor/rules/billr-workflows.mdc',
+    `---\ndescription: Step by step Billr billing workflows: month-end invoice run, overdue chase drafts, quoting, payment status checks, rate catalog upkeep, task billing sessions and engagement billing.\nalwaysApply: false\n---\n\n<!-- Generated by ${GENERATOR} from ${SHARED}/references/workflows.md. Do not edit. -->\n\n${workflows}`,
+  )
+  files.set(
+    'plugins/cursor/rules/billr-tools.mdc',
+    `---\ndescription: The full list of Billr MCP tools with the permission each needs and its required inputs. Read before calling a Billr tool you are unsure about.\nalwaysApply: false\n---\n\n<!-- Generated by ${GENERATOR}. Do not edit. -->\n\n${tools}`,
+  )
+  return files
+}
+
+export function checkGenerated() {
+  const stale = []
+  for (const [path, contents] of generatedFiles()) {
+    let current = null
+    try {
+      current = read(path)
+    } catch {
+      stale.push(`${path}: missing`)
+      continue
+    }
+    if (current !== contents) stale.push(`${path}: out of date`)
+  }
+  return stale
+}
+
+function main(argv) {
+  if (argv.includes('--check')) {
+    const stale = checkGenerated()
+    if (stale.length) {
+      console.error(
+        `Generated plugin files are not current:\n${stale.map((s) => `  ${s}`).join('\n')}\n\nRun: node ${GENERATOR}`,
+      )
+      process.exitCode = 1
+      return
+    }
+    console.log('Generated plugin files are current.')
+    return
+  }
+  let written = 0
+  for (const [path, contents] of generatedFiles()) {
+    const full = resolve(root, path)
+    mkdirSync(dirname(full), { recursive: true })
+    writeFileSync(full, contents)
+    written++
+  }
+  console.log(`Wrote ${written} generated plugin files.`)
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href)
+  main(process.argv.slice(2))

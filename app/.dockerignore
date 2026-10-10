@@ -1,0 +1,19 @@
+*
+!package.json
+!package-lock.json
+!next.config.ts
+!next-env.d.ts
+!tsconfig.json
+!postcss.config.mjs
+!src
+!src/**
+!public
+!public/**
+!scripts
+scripts/*
+!scripts/validate-config.mjs
+# Never admit credentials, build output, operational notes or Git history.
+**/.env*
+**/.git
+**/node_modules
+**/.next

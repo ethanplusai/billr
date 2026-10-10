@@ -1,0 +1,84 @@
+name: CI
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  application:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+      NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:56421
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_build_placeholder
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - run: npm run test:installation
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run check:unused
+      - run: npm run build
+      # Runtime dependencies must be clean at high. Dev tooling is held to
+      # critical, because its advisories can lack a fixed release.
+      - run: npm audit --omit=dev --audit-level=high
+      - run: npm audit --audit-level=critical
+      - run: npm ci && npm run build
+        working-directory: packages/agent-kit
+  database:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.67.1
+      - run: supabase start -x studio,realtime,imgproxy,edge-runtime,logflare,vector,supavisor
+      - run: npm run test:sql
+      - name: Generated database types are current
+        run: |
+          supabase gen types typescript --local --schema public > /tmp/database.ts
+          diff -u src/types/database.ts /tmp/database.ts
+  container:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build the production image
+        run: >-
+          docker build
+          --build-arg NEXT_PUBLIC_APP_URL=http://localhost:3000
+          --build-arg NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:56421
+          --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_build_placeholder
+          -t billr-ci .
+      - name: Start it and wait for the health endpoint
+        run: |
+          docker run -d --name billr-ci -p 127.0.0.1:3000:3000 \
+            --add-host host.docker.internal:host-gateway \
+            -e NEXT_PUBLIC_APP_URL=http://localhost:3000 \
+            -e NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:56421 \
+            -e SUPABASE_INTERNAL_URL=http://host.docker.internal:56421 \
+            -e NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_build_placeholder \
+            -e SUPABASE_SERVICE_ROLE_KEY=sb_secret_ci_placeholder \
+            billr-ci
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:3000/api/health; then exit 0; fi
+            sleep 2
+          done
+          docker logs billr-ci
+          exit 1

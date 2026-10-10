@@ -1,0 +1,2680 @@
+[
+  {
+    "name": "complete_engagement",
+    "title": "Complete Engagement",
+    "description": "Close out an engagement: the work is finished. Every schedule entry waiting on completion becomes ready to bill, and if any money is left unbilled the answer says how much, so nothing is quietly forgotten. Completing does not invoice anything and does not send anything. A completed engagement cannot be reopened, so do this when the work really is done.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "request_id": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+          "description": "Stable request ID. Reuse with identical input on retries."
+        },
+        "engagement_id": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+          "description": "Id of the engagement to complete."
+        }
+      },
+      "required": [
+        "request_id",
+        "engagement_id"
+      ],
+      "$schema": "https://json-schema.org/draft/2020-12/schema"
+    }
+  },
+  {
+    "name": "complete_task",
+    "title": "complete task",
+    "description": "Finish a task after logging all usage. Stops time and freezes work for human billing review. This cannot be undone.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "business_id": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        },
+        "request_id": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+          "description": "Stable ID for this operation. Reuse on retries with identical input."
+        },
+        "task_id": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        }
+      },
+      "required": [
+        "request_id",
+        "task_id"
+      ],
+      "$schema": "https://json-schema.org/draft/2020-12/schema"
+    }
+  },
+  {
+    "name": "convert_estimate_to_engagement",
+    "title": "Convert Estimate to Engagement",
+    "description": "Turn an accepted estimate into an engagement: the same client, the same total and the same currency, now with a payment schedule instead of a single bill. Use this when the quote was agreed but the work will be billed in parts, and convert_estimate_to_invoice when the whole amount is due at once. An estimate can become one or the other, never both, so this refuses a quote that already became an invoice or an engagement. The engagement is created as a draft and nothing is billed or sent: start it when the work begins, which is what makes any deposit ready to bill.",
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "request_id": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+          "description": "Stable request ID. Reuse with identical input on retries."
+        },
+        "estimate_id": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+          "description": "Id of the accepted estimate to convert, from list_estimates or get_estimate."
+        },
+        "billing_mode": {
+          "type": "string",
+          "enum": [
+            "percent_split",
+            "equal_installments",
+            "milestones",
+            "manual"
+          ],
+          "description": "How the quoted total is split: \"percent_split\" (each entry carries a percent), \"equal_installments\" (n equal parts, set installments), \"milestones\" (each entry carries its own amount), or \"manual\" (amounts you state, each waiting for a person)."
+        },
+        "entries": {
+          "description": "The schedule. Required for percent_split, milestones and manual. Optional for equal_installments, where it only names the parts.",
+          "maxItems": 100,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "description": "What this payment is for, for example \"Deposit\" or \"On delivery\".",
+                "type": "string",
+                "maxLength": 200
+              },
+              "amount": {
+                "description": "Amount for this entry. Required for billing_mode \"milestones\" and \"manual\"; the entry amounts must add up to exactly the engagement total.",
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "percent": {
+                "description": "Share of the total for this entry, 0 to 100. Required for billing_mode \"percent_split\"; the percentages must add up to exactly 100.",
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "maximum": 100
+              },
+              "due_rule": {
+                "description": "When this entry becomes billable: \"on_start\" when the engagement is started, \"on_complete\" when it is completed, \"on_milestone\" when you call mark_milestone_complete, \"on_date\" when its date passes, or \"manual\" for one a person decides about. Defaults to on_start for the first entry, on_complete for the last, and on_milestone in between.",
+                "type": "string",
+                "enum": [
+                  "on_start",
+                  "on_complete",
+                  "on_milestone",
+                  "on_date",
+                  "manual"
+                ]
+              },
+              "due_on": {
+                "description": "The date an \"on_date\" entry becomes billable, YYYY-MM-DD.",
+                "type": "string",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+              }
+            }
+          }
+        },
+        "installments": {
+          "description": "How many equal parts to split the quoted total into. Only for billing_mode \"equal_installments\".",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        }
+      },
+      "required": [
+        "request_id",
+        "estimate_id",
+        "billing_mode"
+      ]
+    }
+  },
+  {
+    "name": "convert_estimate_to_invoice",
+    "title": "Convert Estimate to Invoice",
+    "description": "Turn an estimate into a draft invoice carrying the same line items, currency, notes, and terms, then mark the estimate \"converted\" and link the two. Use it once the client has agreed. It does NOT send the invoice; call send_invoice after. Refuses an estimate that was already converted, declined, or expired.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "estimate_id": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+          "description": "Id of the estimate to convert."
+        },
+        "issue_date": {
+          "description": "Invoice issue date, YYYY-MM-DD. Defaults to today.",
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "due_date": {
+          "description": "Invoice due date, YYYY-MM-DD. Defaults to issue_date plus the business's default payment terms.",
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        }
+      },
+      "required": [
+        "estimate_id"
+      ],
+      "$schema": "https://json-schema.org/draft/2020-12/schema"
+    }
+  },
+  {
+    "name": "create_client",
+    "title": "Create Client",
+    "description": "Create a new client under one of the caller's businesses. Fails with an instructive error if a client with the same name already exists in that business. Use update_client instead in that case.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "business_id": {
+          "description": "Id of the business to create the client under. Optional when the API key is scoped to exactly one business; required if scoped to multiple.",
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "description": "Client name (person or company)."
+        },
+        "email": {
+          "description": "Client's email address.",
+          "type": "string",
+          "maxLength": 320,
+          "format": "email",
+          "pattern": "^(?!\\.)(?!.*\\.\\.)([A-Za-z0-9_'+\\-\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+        },
+        "phone": {
+          "description": "Client's phone number.",
+          "type": "string",
+          "maxLength": 50
+        },
+        "address_line1": {
+          "description": "Street address, line 1.",
+          "type": "string",
+          "maxLength": 200
+        },
+        "address_line2": {
+          "description": "Street address, line 2 (suite, unit, etc).",
+          "type": "string",
+          "maxLength": 200
+        },
+        "city": {
+          "description": "City.",
+          "type": "string",
+          "maxLength": 100
+        },
+        "state": {
+          "description": "State or province.",
+          "type": "string",
+          "maxLength": 100
+        },
+        "postal_code": {
+          "description": "Postal or ZIP code.",
+          "type": "string",
+          "maxLength": 20
+        },
+        "country": {
+          "description": "Country.",
+          "type": "string",
+          "maxLength": 100
+        },
+        "currency": {
+          "description": "ISO currency code for this client, e.g. \"USD\". Defaults to the business currency if omitted.",
+          "type": "string",
+          "maxLength": 10
+        },
+        "notes": {
+          "description": "Free-form internal notes about this client.",
+          "type": "string",
+          "maxLength": 2000
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "$schema": "https://json-schema.org/draft/2020-12/schema"
+    }
+  },
+  {
+    "name": "create_engagement",
+    "title": "Create Engagement",
+    "description": "Record an agreed piece of work with a total and a payment schedule, for example \"12,000 for the rebuild, 50% deposit and 50% on delivery\" or \"9,000 in 3 equal installments\". The schedule is worked out on the server so the entries always add up to exactly the total; the last entry absorbs any rounding. Nothing is billed and nothing is sent by creating one: entries become ready to bill as their due rules fire, and you then raise an invoice for them. Use create_estimate instead when the price has not been agreed yet, and create_invoice when work is already delivered and should be billed now.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "request_id": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+          "description": "Stable request ID. Reuse with identical input on retries."
+        },
+        "business_id": {
+          "description": "Id of the business. Optional when the API key is scoped to exactly one business; required if scoped to multiple.",
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        },
+        "client_id": {
+          "description": "Id of the client. Provide this or client_name.",
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        },
+        "client_name": {
+          "description": "Exact (case-insensitive) client name. Provide this or client_id.",
+          "type": "string",
+          "maxLength": 200
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "description": "What was agreed, for example \"Website rebuild\"."
+        },
+        "total": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "The agreed total for the whole engagement, in the engagement currency."
+        },
+        "currency": {
+          "description": "Three letter currency code. Defaults to the client currency, then the business default.",
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 3
+        },
+        "billing_mode": {
+          "type": "string",
+          "enum": [
+            "percent_split",
+            "equal_installments",
+            "milestones",
+            "manual"
+          ],
+          "description": "How the total is split: \"percent_split\" (each entry carries a percent), \"equal_installments\" (n equal parts, set installments), \"milestones\" (each entry carries its own amount), or \"manual\" (amounts you state, each waiting for a person)."
+        },
+        "entries": {
+          "description": "The schedule. Required for percent_split, milestones and manual. Optional for equal_installments, where it only names the parts.",
+          "maxItems": 100,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "description": "What this payment is for, for example \"Deposit\" or \"On delivery\".",
+                "type": "string",
+                "maxLength": 200
+              },
+              "amount": {
+                "description": "Amount for this entry. Required for billing_mode \"milestones\" and \"manual\"; the entry amounts must add up to exactly the engagement total.",
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "percent": {
+                "description": "Share of the total for this entry, 0 to 100. Required for billing_mode \"percent_split\"; the percentages must add up to exactly 100.",
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "maximum": 100
+              },
+              "due_rule": {
+                "description": "When this entry becomes billable: \"on_start\" when the engagement is started, \"on_complete\" when it is completed, \"on_milestone\" when you call mark_milestone_complete, \"on_date\" when its date passes, or \"manual\" for one a person decides about. Defaults to on_start for the first entry, on_complete for the last, and on_milestone in between.",
+                "type": "string",
+                "enum": [
+                  "on_start",
+                  "on_complete",
+                  "on_milestone",
+                  "on_date",
+                  "manual"
+                ]
+              },
+              "due_on": {
+                "description": "The date an \"on_date\" entry becomes billable, YYYY-MM-DD.",
+                "type": "string",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+              }
+            }
+          }
+        },
+        "installments": {
+          "description": "How many equal parts to split the total into. Only for billing_mode \"equal_installments\".",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "start_now": {
+          "description": "True to start the engagement immediately, which makes any \"on_start\" entry ready to bill. Defaults to false, which leaves it as a draft.",
+          "type": "boolean"
+        },
+        "starts_on": {
+          "description": "Date the work starts, YYYY-MM-DD.",
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "target_end": {
+          "description": "Date the work is meant to finish, YYYY-MM-DD.",
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "notes": {
+          "description": "Internal notes about the agreement. Never shown to the client.",
+          "type": "string",
+          "maxLength": 2000
+        },
+        "source_estimate_id": {
+          "description": "Id of the estimate this agreement came from, if it started as a quote.",
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        }
+      },
+      "required": [
+        "request_id",
+        "name",
+        "total",
+        "billing_mode"
+      ],
+      "$schema": "https://json-schema.org/draft/2020-12/schema"
+    }
+  },
+  {
+    "name": "create_estimate",
+    "title": "Create Estimate",
+    "description": "Draft a new estimate (quote) for a client, identified by client_id or client_name. Use this when work has not been agreed yet and the client needs a price first. Always created as a draft: call send_estimate to deliver it, then convert_estimate_to_invoice once it is accepted. Do NOT use this for work already delivered; create_invoice is the right tool there.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "request_id": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+          "description": "Stable request ID. Reuse with identical input on retries."
+        },
+        "business_id": {
+          "description": "Id of the business to create the estimate under. Optional when the API key is scoped to exactly one business; required if scoped to multiple.",
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        },
+        "client_id": {
+          "description": "Id of the client. Provide this or client_name.",
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        },
+        "client_name": {
+          "description": "Exact (case-insensitive) client name. Provide this or client_id.",
+          "type": "string",
+          "maxLength": 200
+        },
+        "line_items": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "description": {
+                "description": "Line item description. Required unless item_id or item_name is given, in which case it defaults to the saved item's description (or its name if it has none).",
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500
+              },
+              "quantity": {
+                "description": "Quantity (must be > 0). Defaults to 1.",
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "maximum": 99999999,
+                "multipleOf": 1e-06
+              },
+              "rate": {
+                "description": "Rate per unit. Required unless item_id or item_name is given, in which case it defaults to the saved item's rate. Pass it explicitly to override the saved rate for this line only.",
+                "type": "number",
+                "minimum": 0,
+                "maximum": 99999999,
+                "multipleOf": 1e-06
+              },
+              "item_id": {
+                "description": "Id of a saved item (from list_items) to price this line from. Takes precedence over item_name.",
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "item_name": {
+                "description": "Exact (case-insensitive) name of a saved item to price this line from, e.g. \"Consulting\". Use list_items first if you are unsure of the exact name.",
+                "type": "string",
+                "maxLength": 200
+              }
+            }
+          },
+          "description": "Estimate line items; at least one required. Each line is either written out (description + quantity + rate) or points at a saved item via item_id / item_name, which supplies the description and rate."
+        },
+        "issue_date": {
+          "description": "Issue date, YYYY-MM-DD. Defaults to today.",
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "expiry_date": {
+          "description": "Date the quote stops being valid, YYYY-MM-DD. Defaults to issue_date plus 30 days.",
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "notes": {
+          "description": "Notes shown on the estimate.",
+          "type": "string",
+          "maxLength": 2000
+        },
+        "terms": {
+          "description": "Terms shown on the estimate, e.g. what the quote does not cover.",
+          "type": "string",
+          "maxLength": 2000
+        },
+        "discount_type": {
+          "description": "Discount type. Defaults to \"percentage\".",
+          "type": "string",
+          "enum": [
+            "percentage",
+            "fixed"
+          ]
+        },
+        "discount_value": {
+          "description": "Discount value: a percent (0-100) if discount_type is \"percentage\", or a flat amount otherwise. Defaults to 0.",
+          "type": "number",
+          "minimum": 0
+        },
+        "tax_rate": {
+          "description": "Tax rate percent, applied after the discount. Defaults to 0.",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "shipping_amount": {
+          "description": "Flat shipping amount, added after tax. Defaults to 0.",
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "request_id",
+        "line_items"
+      ],
+      "$schema": "https://json-schema.org/draft/2020-12/schema"
+    }
+  },
+  {
+    "name": "create_invoice",
+    "title": "Create Invoice",
+    "description": "Draft a new invoice for a client, identified by client_id or client_name (exact match, case-insensitive). Always created as a draft. Use send_invoice separately to send it. Pass engagement_entry_ids to bill agreed work off an engagement schedule, which marks those entries invoiced in the same step so they can never be billed twice.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "currency": {
+          "description": "Invoice currency. Defaults to the client currency. Source work must use this currency; no implicit conversion.",
+          "type": "string",
+          "pattern": "^[A-Z]{3}$"
+        },
+        "request_id": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+          "description": "Unique request ID. Reuse the same ID and input after a timeout to return the original draft."
+        },
+        "business_id": {
+          "description": "Id of the business to create the invoice under. Optional when the API key is scoped to exactly one business; required if scoped to multiple.",
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        },
+        "client_id": {
+          "description": "Id of the client. Provide this or client_name.",
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        },
+        "client_name": {
+          "description": "Exact (case-insensitive) client name. Provide this or client_id.",
+          "type": "string",
+          "maxLength": 200
+        },
+        "line_items": {
+          "description": "Invoice line items. Omit when billing time_entry_ids or expense_ids; source work determines those lines. Each line is either written out (description + quantity + rate) or points at a saved item via item_id / item_name, which supplies the description and rate.",
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "description": {
+                "description": "Line item description. Required unless item_id or item_name is given, in which case it defaults to the saved item's description (or its name if it has none).",
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500
+              },
+              "quantity": {
+                "description": "Quantity (must be > 0). Defaults to 1.",
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "maximum": 99999999,
+                "multipleOf": 1e-06
+              },
+              "rate": {
+                "description": "Rate per unit. Required unless item_id or item_name is given, in which case it defaults to the saved item's rate. Pass it explicitly to override the saved rate for this line only.",
+                "type": "number",
+                "minimum": 0,
+                "maximum": 99999999,
+                "multipleOf": 1e-06
+              },
+              "item_id": {
+                "description": "Id of a saved item (from list_items) to price this line from. Takes precedence over item_name.",
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "item_name": {
+                "description": "Exact (case-insensitive) name of a saved item to price this line from, e.g. \"Consulting\". Use list_items first if you are unsure of the exact name.",
+                "type": "string",
+                "maxLength": 200
+              }
+            }
+          }
+        },
+        "issue_date": {
+          "description": "Issue date, YYYY-MM-DD. Defaults to today.",
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "due_date": {
+          "description": "Due date, YYYY-MM-DD. Defaults to issue_date + the business's default payment terms.",
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "notes": {
+          "description": "Notes shown on the invoice. Defaults to the business notes template.",
+          "type": "string",
+          "maxLength": 2000
+        },
+        "status": {
+          "description": "Invoice status. Only \"draft\" is supported here. Use send_invoice to send.",
+          "type": "string",
+          "const": "draft"
+        },
+        "time_entry_ids": {
+          "description": "Ids of unbilled time entries (from list_unbilled) to mark as billed by attaching them to this invoice. Each must belong to the same business and not already be on another invoice.",
+          "maxItems": 100,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          }
+        },
+        "expense_ids": {
+          "description": "Ids of unbilled expenses (from list_unbilled) to mark as billed by attaching them to this invoice. Each must belong to the same business and not already be on another invoice.",
+          "maxItems": 100,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          }
+        },
+        "engagement_entry_ids": {
+          "description": "Ids of engagement schedule entries to bill (from list_ready_to_bill or get_engagement). Each becomes one line at the agreed amount and is marked invoiced in the same step, so it cannot be billed again. Every entry must be ready to bill, belong to this client, and be in the invoice currency; an entry that is already invoiced refuses the whole call.",
+          "maxItems": 100,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          }
+        },
+        "discount_type": {
+          "description": "Discount type. Defaults to \"percentage\".",
+          "type": "string",
+          "enum": [
+            "percentage",
+            "fixed"
+          ]
+        },
+        "discount_value": {
+          "description": "Discount value: a percent (0-100) if discount_type is \"percentage\", or a flat amount otherwise. Defaults to 0.",
+          "type": "number",
+          "minimum": 0
+        },
+        "tax_rate": {
+          "description": "Tax rate percent, applied after the discount. Defaults to 0.",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "shipping_amount": {
+          "description": "Flat shipping amount, added after tax. Defaults to 0.",
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "request_id"
+      ],
+      "$schema": "https://json-schema.org/draft/2020-12/schema"
+    }
+  },
+  {
+    "name": "create_item",
+    "title": "Create Saved Item",
+    "description": "Add a product or service to the saved catalog so future invoices and estimates can bill it by name at a consistent rate. Use this when the user says \"my rate for X is Y\" or wants a reusable line. Do NOT use it to add a one-off line to an existing invoice; pass line_items to create_invoice or update_draft_invoice instead.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "business_id": {
+          "description": "Id of the business to add the item under. Optional when the API key is scoped to exactly one business; required if scoped to multiple.",
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "description": "Short catalog name, e.g. \"Consulting\". This is what item_name matches on later, so keep it distinct."
+        },
+        "rate": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Default rate per unit, in the business currency."
+        },
+        "description": {
+          "description": "Longer description used as the invoice line text. Defaults to the name when omitted.",
+          "type": "string",
+          "maxLength": 500
+        },
+        "unit": {
+          "description": "Unit the rate is quoted in, e.g. \"hour\". Display only; it does not affect the math.",
+          "type": "string",
+          "enum": [
+            "hour",
+            "day",
+            "week",
+            "month",
+            "project",
+            "item",
+            "unit"
+          ]
+        },
+        "type": {
+          "description": "Item type. Defaults to \"service\".",
+          "type": "string",
+          "enum": [
+            "service",
+            "product"
+          ]
+        },
+        "tax_rate": {
+          "description": "Default tax rate percent stored with the item. Defaults to 0.",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        }
+      },
+      "required": [
+        "name",
+        "rate"
+      ],
+      "$schema": "https://json-schema.org/draft/2020-12/schema"
+    }
+  },
+  {
+    "name": "create_task",
+    "title": "create task",
+    "description": "Create a paused task using a human-approved pricing policy. A task has its own budget. Then start_task when active work begins.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "business_id": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        },
+        "request_id": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+          "description": "Stable ID for this operation. Reuse on retries with identical input."
+        },
+        "policy_id": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        }
+      },
+      "required": [
+        "request_id",
+        "policy_id",
+        "title"
+      ],
+      "$schema": "https://json-schema.org/draft/2020-12/schema"
+    }
+  },
+  {
+    "name": "delete_expense",
+    "title": "Delete Expense",
+    "description": "Permanently delete ONE expense by its id, returning what was deleted so it can be re-logged if that was a mistake. There is no bulk delete and no filter-based delete on purpose. Refuses expenses already attached to an invoice. Prefer update_expense when the expense is merely wrong rather than unwanted.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "expense_id": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+          "description": "Id of the single expense to delete, from list_expenses. Required and exact: this tool never deletes by category, client, date, or any other filter."
+        }
+      },
+      "required": [
+        "expense_id"
+      ],
+      "$schema": "https://json-schema.org/draft/2020-12/schema"
+    }
+  },
+  {
+    "name": "delete_time_entry",
+    "title": "Delete Time Entry",
+    "description": "Permanently delete ONE time entry by its id, returning what was deleted so it can be re-logged if that was a mistake. There is no bulk delete and no filter-based delete on purpose. Refuses entries already attached to an invoice. Prefer update_time_entry when the entry is merely wrong rather than unwanted.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "time_entry_id": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+          "description": "Id of the single entry to delete, from list_time_entries. Required and exact: this tool never deletes by client, date, or any other filter."
+        }
+      },
+      "required": [
+        "time_entry_id"
+      ],
+      "$schema": "https://json-schema.org/draft/2020-12/schema"
+    }
+  },
+  {
+    "name": "get_business",
+    "title": "Get Business",
+    "description": "Fetch details for one of the caller's businesses: name, contact email, currency, invoice numbering. If the API key is scoped to a single business, business_id can be omitted.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "business_id": {
+          "description": "Id of the business to fetch. Optional when the API key is scoped to exactly one business; required if scoped to multiple.",
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema"
+    }
+  },
+  {
+    "name": "get_client",
+    "title": "Get Client",
+    "description": "Fetch full details for one client, including their five most recent invoices. The client must belong to one of the caller's businesses.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "client_id": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+          "description": "Id of the client to fetch."
+        }
+      },
+      "required": [
+        "client_id"
+      ],
+      "$schema": "https://json-schema.org/draft/2020-12/schema"
+    }
+  },
+  {
+    "name": "get_engagement",
+    "title": "Get Engagement",
+    "description": "Read one engagement in full: the agreed total, what has been billed, what is left, and every schedule entry with its status, its due rule and the invoice it became. Use this before billing anything, so you bill the entries that are ready and not the ones that are already invoiced. Read-only, and nothing is sent to anyone.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "engagement_id": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+          "description": "Id of the engagement, from list_engagements or create_engagement."
+        }
+      },
+      "required": [
+        "engagement_id"
+      ],
+      "$schema": "https://json-schema.org/draft/2020-12/schema"
+    }
+  },
+  {
+    "name": "get_estimate",
+    "title": "Get Estimate",
+    "description": "Fetch one estimate in full: line items, totals, client, status, and the shareable link. Use it before update_draft_estimate or convert_estimate_to_invoice so you are editing the real current contents rather than assumed ones. It does not return payment or balance information, because an estimate is not an invoice; use get_payment_status for money owed.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "estimate_id": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+          "description": "Id of the estimate to fetch (from list_estimates or create_estimate)."
+        }
+      },
+      "required": [
+        "estimate_id"
+      ],
+      "$schema": "https://json-schema.org/draft/2020-12/schema"
+    }
+  },
+  {
+    "name": "get_invoice",
+    "title": "Get Invoice",
+    "description": "Fetch full details for one invoice, including line items, client, and public/PDF links. Identify the invoice by invoice_id, or by invoice_number (optionally scoped to a specific business if the caller has more than one).",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "invoice_id": {
+          "description": "Id of the invoice to fetch.",
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        },
+        "invoice_number": {
+          "description": "Invoice number to look up (e.g. \"INV-0004\"). Used only if invoice_id is omitted.",
+          "type": "string"
+        },
+        "business_id": {
+          "description": "When looking up by invoice_number, restrict the search to this business. Optional when scoped to a single business; recommended if scoped to multiple.",
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema"
+    }
+  },
+  {
+    "name": "get_invoice_link",
+    "title": "Get Invoice Link",
+    "description": "Get the shareable public link and PDF download link for an invoice. The invoice must belong to one of the caller's businesses.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "invoice_id": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+          "description": "Id of the invoice."
+        }
+      },
+      "required": [
+        "invoice_id"
+      ],
+      "$schema": "https://json-schema.org/draft/2020-12/schema"
+    }
+  },
+  {
+    "name": "get_payment_status",
+    "title": "Get Payment Status",
+    "description": "Report where one invoice stands on money: amount due, amount paid, each recorded payment with its payment_id, whether online card payment is switched on, and the link a client can pay from. Use it to answer \"has X paid yet\" or \"what do they still owe\". Voided payments are left out of the list and every total unless include_voided is true. Read-only: use record_payment to log a payment that came in outside Stripe, update_payment to correct one, and void_payment to undo one.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "invoice_id": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+          "description": "Id of the invoice to check, from list_invoices, create_invoice, or get_invoice."
+        },
+        "include_voided": {
+          "description": "Include voided payments in the returned list. Defaults to false. Voided payments never count towards any total either way.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "invoice_id"
+      ],
+      "$schema": "https://json-schema.org/draft/2020-12/schema"
+    }
+  },
+  {
+    "name": "get_profile",
+    "title": "Get Profile",
+    "description": "Return the Billr account this connection signs in as: a stable opaque id, the name and the email address. Use it to confirm which Billr login is connected; use list_businesses for the businesses it can act on.",
+    "inputSchema": {
+      "type": "object",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {}
+    },
+    "outputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "get_task_billing_preview",
+    "title": "Task Billing Preview",
+    "description": "Read recorded active seconds and reported usage. Time excludes unrecorded running intervals. Completion and human approval are required before invoicing. Amounts are rounded per component.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "business_id": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        },
+        "task_id": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        }
+      },
+      "required": [
+        "task_id"
+      ],
+      "$schema": "https://json-schema.org/draft/2020-12/schema"
+    }
+  },
+  {
+    "name": "heartbeat_task",
+    "title": "heartbeat task",
+    "description": "Record active elapsed time using server timestamps, capped at 120 seconds since the previous heartbeat. Retry with the same request ID to avoid counting twice.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "business_id": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        },
+        "request_id": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+          "description": "Stable ID for this operation. Reuse on retries with identical input."
+        },
+        "task_id": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        }
+      },
+      "required": [
+        "request_id",
+        "task_id"
+      ],
+      "$schema": "https://json-schema.org/draft/2020-12/schema"
+    }
+  },
+  {
+    "name": "list_billing_policies",
+    "title": "List Approved Pricing",
+    "description": "Read human-approved task rates, usage multipliers, currencies and budgets. Agents cannot approve pricing.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "business_id": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema"
+    }
+  },
+  {
+    "name": "list_businesses",
+    "title": "List Businesses",
+    "description": "List every business this API key can act on, ordered by name. Call this first when you don't know which business_id to pass to the other tools. If exactly one is returned, business_id can be omitted everywhere.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {},
+      "$schema": "https://json-schema.org/draft/2020-12/schema"
+    }
+  },
+  {
+    "name": "list_clients",
+    "title": "List Clients",
+    "description": "List clients for one of the caller's businesses, ordered by name. Optionally filter by a case-insensitive substring search on name or email.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "offset": {
+          "description": "Page offset. Start at 0, then use next_offset until it is null. Keep other filters unchanged.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000000
+        },
+        "business_id": {
+          "description": "Id of the business whose clients to list. Optional when the API key is scoped to exactly one business; required if scoped to multiple.",
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        },
+        "search": {
+          "description": "Case-insensitive substring to filter clients by name or email.",
+          "type": "string",
+          "maxLength": 200
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema"
+    }
+  },
+  {
+    "name": "list_engagements",
+    "title": "List Engagements",
+    "description": "List engagements: agreed pieces of work with a total and a payment schedule, for example \"12,000 for the website rebuild, 50% up front and 50% on delivery\". Use this to answer \"what have we agreed with this client\" or \"what is still unbilled on this project\". Each one reports how much has been billed, how much is left, and how many schedule entries are ready to bill now. Read-only, and nothing in the engagement tools ever sends anything to a client.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "offset": {
+          "description": "Page offset. Start at 0, then use next_offset until it is null. Keep other filters unchanged.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000000
+        },
+        "business_id": {
+          "description": "Id of the business whose engagements to list. Omit to list across every business in scope.",
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        },
+        "client_id": {
+          "description": "Filter to engagements for this client only.",
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        },
+        "status": {
+          "description": "Filter by status: draft, active, paused, completed, or cancelled.",
+          "type": "string",
+          "enum": [
+            "draft",
+            "active",
+            "paused",
+            "completed",
+            "cancelled"
+          ]
+        },
+        "has_ready_to_bill": {
+          "description": "True to list only engagements with at least one schedule entry ready to bill right now.",
+          "type": "boolean"
+        },
+        "limit": {
+          "description": "Max engagements to return (default 20, max 100).",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema"
+    }
+  },
+  {
+    "name": "list_estimates",
+    "title": "List Estimates",
+    "description": "List estimates (quotes) for the caller's businesses, most recent first, optionally filtered by business, status, or client. Use this to answer \"what quotes are outstanding\". Estimates are NOT invoices and never carry a balance; use list_invoices for anything about money owed.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "offset": {
+          "description": "Page offset. Start at 0, then use next_offset until it is null. Keep other filters unchanged.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000000
+        },
+        "business_id": {
+          "description": "Id of the business whose estimates to list. Omit to list across every business in scope.",
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        },
+        "status": {
+          "description": "Filter by status: draft, sent, viewed, accepted, declined, expired, or converted (already turned into an invoice).",
+          "type": "string",
+          "enum": [
+            "draft",
+            "sent",
+            "viewed",
+            "accepted",
+            "declined",
+            "expired",
+            "converted"
+          ]
+        },
+        "client_id": {
+          "description": "Filter to estimates for this client only.",
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        },
+        "limit": {
+          "description": "Max estimates to return (default 20, max 100).",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema"
+    }
+  },
+  {
+    "name": "list_expenses",
+    "title": "List Expenses",
+    "description": "List expenses filtered by category, client, date range, and billed status, with totals grouped per currency. Use this for \"what did I spend on software last quarter\" or to find an expense to correct. For rebilling unbilled costs to a client, prefer list_unbilled.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "offset": {
+          "description": "Page offset. Start at 0, then use next_offset until it is null. Keep other filters unchanged.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000000
+        },
+        "business_id": {
+          "description": "Id of the business whose expenses to list. Optional when the API key is scoped to exactly one business; required if scoped to multiple.",
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        },
+        "category": {
+          "description": "Restrict to a single expense category. Omit to include every category.",
+          "type": "string",
+          "enum": [
+            "office",
+            "travel",
+            "meals",
+            "supplies",
+            "utilities",
+            "software",
+            "marketing",
+            "professional",
+            "insurance",
+            "mileage",
+            "other"
+          ]
+        },
+        "client_id": {
+          "description": "Restrict to one client. Provide this or client_name.",
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        },
+        "client_name": {
+          "description": "Exact (case-insensitive) client name to restrict to. Provide this or client_id.",
+          "type": "string",
+          "maxLength": 200
+        },
+        "from": {
+          "description": "Earliest expense date to include, YYYY-MM-DD (inclusive).",
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "to": {
+          "description": "Latest expense date to include, YYYY-MM-DD (inclusive).",
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "billed": {
+          "description": "\"unbilled\" returns expenses not yet on an invoice, \"billed\" returns those already invoiced, \"all\" returns both. Defaults to \"all\".",
+          "type": "string",
+          "enum": [
+            "billed",
+            "unbilled",
+            "all"
+          ]
+        },
+        "billable": {
+          "description": "Filter by the billable flag. Omit to include both billable and non-billable expenses.",
+          "type": "boolean"
+        },
+        "limit": {
+          "description": "Max expenses to return (default 50, max 200).",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 200
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema"
+    }
+  },
+  {
+    "name": "list_invoices",
+    "title": "List Invoices",
+    "description": "List invoices for the caller's businesses, most recent first. Optionally filter by business, status (including the synthetic 'unpaid' status, which matches sent/viewed/partial/overdue), and/or client.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "offset": {
+          "description": "Page offset. Start at 0, then use next_offset until it is null. Keep other filters unchanged.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000000
+        },
+        "business_id": {
+          "description": "Id of the business whose invoices to list. Optional. Omit to list across all businesses in scope.",
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        },
+        "status": {
+          "description": "Filter by status. 'unpaid' is a synthetic filter matching sent, viewed, partial, and overdue invoices.",
+          "type": "string",
+          "enum": [
+            "draft",
+            "sent",
+            "viewed",
+            "paid",
+            "partial",
+            "overdue",
+            "cancelled",
+            "unpaid"
+          ]
+        },
+        "client_id": {
+          "description": "Filter to invoices for this client only.",
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        },
+        "limit": {
+          "description": "Max invoices to return (default 20, max 100).",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema"
+    }
+  },
+  {
+    "name": "list_items",
+    "title": "List Saved Items",
+    "description": "List the saved product/service catalog for a business, with each item's stored rate. Use this before create_invoice or create_estimate when the user names a service (\"Consulting\", \"Design retainer\") so you bill the saved rate instead of guessing. Not for looking up what was billed on a specific invoice; use get_invoice for that.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "offset": {
+          "description": "Page offset. Start at 0, then use next_offset until it is null. Keep other filters unchanged.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000000
+        },
+        "business_id": {
+          "description": "Id of the business whose catalog to list. Optional when the API key is scoped to exactly one business; required if scoped to multiple.",
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        },
+        "search": {
+          "description": "Case-insensitive substring match on the item name. Omit to list everything.",
+          "type": "string",
+          "maxLength": 200
+        },
+        "include_inactive": {
+          "description": "Include items that have been deactivated. Defaults to false (active items only).",
+          "type": "boolean"
+        },
+        "limit": {
+          "description": "Max items to return (default 50, max 200).",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 200
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema"
+    }
+  },
+  {
+    "name": "list_ready_to_bill",
+    "title": "List Ready to Bill",
+    "description": "List every engagement schedule entry that is ready to bill right now, across all clients. This is the \"what should I invoice today\" list: deposits on engagements that have started, milestones marked complete, dated payments whose date has passed, and final payments on completed engagements. Nothing here has been invoiced yet, and nothing is sent to anyone by looking. Read-only.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "offset": {
+          "description": "Page offset. Start at 0, then use next_offset until it is null. Keep other filters unchanged.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000000
+        },
+        "business_id": {
+          "description": "Id of the business to look at. Omit to look across every business in scope.",
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        },
+        "client_id": {
+          "description": "Filter to one client only.",
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        },
+        "limit": {
+          "description": "Max entries to return (default 50, max 200).",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 200
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema"
+    }
+  },
+  {
+    "name": "list_time_entries",
+    "title": "List Time Entries",
+    "description": "List tracked time, filtered by client, date range, and billed status. Use this to answer \"how many hours did I put into X\" or to find the entry to correct. To draft an invoice from unbilled work, prefer list_unbilled, which groups by client and totals it for you.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "offset": {
+          "description": "Page offset. Start at 0, then use next_offset until it is null. Keep other filters unchanged.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000000
+        },
+        "business_id": {
+          "description": "Id of the business whose time to list. Optional when the API key is scoped to exactly one business; required if scoped to multiple.",
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        },
+        "client_id": {
+          "description": "Restrict to one client. Provide this or client_name.",
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        },
+        "client_name": {
+          "description": "Exact (case-insensitive) client name to restrict to. Provide this or client_id.",
+          "type": "string",
+          "maxLength": 200
+        },
+        "from": {
+          "description": "Earliest entry date to include, YYYY-MM-DD (inclusive).",
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "to": {
+          "description": "Latest entry date to include, YYYY-MM-DD (inclusive).",
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "billed": {
+          "description": "\"unbilled\" returns entries not yet on an invoice, \"billed\" returns those already invoiced, \"all\" returns both. Defaults to \"all\".",
+          "type": "string",
+          "enum": [
+            "billed",
+            "unbilled",
+            "all"
+          ]
+        },
+        "billable": {
+          "description": "Filter by the billable flag. Omit to include both billable and non-billable time.",
+          "type": "boolean"
+        },
+        "limit": {
+          "description": "Max entries to return (default 50, max 200).",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 200
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema"
+    }
+  },
+  {
+    "name": "list_unbilled",
+    "title": "List Unbilled Work",
+    "description": "List billable time entries and expenses not yet attached to an invoice, grouped by client with totals. Use this to draft an invoice from a client's unbilled work; entries missing an hourly rate are flagged. Billable entries with no client can't be grouped into a client invoice, so they're excluded from `clients` but still surfaced via the summary and the `unassigned` field.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "offset": {
+          "description": "Page offset for time and expenses. Totals apply to this page only; follow next_offset for more work.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000000
+        },
+        "business_id": {
+          "description": "Id of the business to list unbilled work for. Optional when the API key is scoped to exactly one business; required if scoped to multiple.",
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        },
+        "client_id": {
+          "description": "Restrict to a single client.",
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema"
+    }
+  },
+  {
+    "name": "log_expense",
+    "title": "Log Expense",
+    "description": "Log a business expense. A client is optional; identify one by client_id or client_name (exact match, case-insensitive) to attach the expense for later billing.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "request_id": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+          "description": "Stable work-entry ID. Reuse identical input on retries."
+        },
+        "business_id": {
+          "description": "Id of the business to log the expense under. Optional when the API key is scoped to exactly one business; required if scoped to multiple.",
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        },
+        "client_id": {
+          "description": "Id of the client this expense is for, if any.",
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        },
+        "client_name": {
+          "description": "Exact (case-insensitive) client name this expense is for, if any.",
+          "type": "string",
+          "maxLength": 200
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500,
+          "description": "What the expense was for."
+        },
+        "amount": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Expense amount, must be > 0."
+        },
+        "date": {
+          "description": "Date of the expense, YYYY-MM-DD. Defaults to today.",
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "category": {
+          "description": "Expense category. Defaults to \"other\".",
+          "type": "string",
+          "enum": [
+            "office",
+            "travel",
+            "meals",
+            "supplies",
+            "utilities",
+            "software",
+            "marketing",
+            "professional",
+            "insurance",
+            "mileage",
+            "other"
+          ]
+        },
+        "billable": {
+          "description": "Whether this expense is billable to the client. Defaults to true when a client is attached, false otherwise.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "request_id",
+        "description",
+        "amount"
+      ],
+      "$schema": "https://json-schema.org/draft/2020-12/schema"
+    }
+  },
+  {
+    "name": "log_time",
+    "title": "Log Time",
+    "description": "Log a time entry for a client, identified by client_id or client_name (exact match, case-insensitive). Billable by default.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "request_id": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+          "description": "Stable work-entry ID. Reuse identical input on retries."
+        },
+        "business_id": {
+          "description": "Id of the business to log time under. Optional when the API key is scoped to exactly one business; required if scoped to multiple.",
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        },
+        "client_id": {
+          "description": "Id of the client. Provide this or client_name.",
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        },
+        "client_name": {
+          "description": "Exact (case-insensitive) client name. Provide this or client_id.",
+          "type": "string",
+          "maxLength": 200
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500,
+          "description": "What the time was spent on."
+        },
+        "hours": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 24,
+          "description": "Hours worked, > 0 and <= 24."
+        },
+        "date": {
+          "description": "Date of the work, YYYY-MM-DD. Defaults to today.",
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "rate": {
+          "description": "Hourly rate for this entry. If omitted, the entry is logged without a rate and flagged by list_unbilled so it can be confirmed before invoicing.",
+          "type": "number",
+          "minimum": 0
+        },
+        "billable": {
+          "description": "Whether this time is billable. Defaults to true.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "request_id",
+        "description",
+        "hours"
+      ],
+      "$schema": "https://json-schema.org/draft/2020-12/schema"
+    }
+  },
+  {
+    "name": "mark_milestone_complete",
+    "title": "Mark Milestone Complete",
+    "description": "Record that a schedule entry has been delivered. An entry waiting on a milestone becomes ready to bill; an entry waiting on the start or the end of the engagement, or on a date, keeps its own rule and is simply stamped complete. Nothing is invoiced and nothing is sent: use list_ready_to_bill to see what this freed up, then raise an invoice for it.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "request_id": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+          "description": "Stable request ID. Reuse with identical input on retries."
+        },
+        "entry_id": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+          "description": "Id of the schedule entry, from get_engagement or list_ready_to_bill."
+        }
+      },
+      "required": [
+        "request_id",
+        "entry_id"
+      ],
+      "$schema": "https://json-schema.org/draft/2020-12/schema"
+    }
+  },
+  {
+    "name": "pause_task",
+    "title": "pause task",
+    "description": "Stop charging time while waiting or idle. Records up to 120 seconds since the last heartbeat.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "business_id": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        },
+        "request_id": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+          "description": "Stable ID for this operation. Reuse on retries with identical input."
+        },
+        "task_id": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        }
+      },
+      "required": [
+        "request_id",
+        "task_id"
+      ],
+      "$schema": "https://json-schema.org/draft/2020-12/schema"
+    }
+  },
+  {
+    "name": "record_payment",
+    "title": "Record Payment",
+    "description": "Record a payment received against an invoice, updating the invoice's amount_paid/balance_due and status (\"paid\" once the balance reaches zero, \"partial\" otherwise). Mirrors the app's own Record Payment flow.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "request_id": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+          "description": "Stable payment ID; reuse with identical input on retries."
+        },
+        "invoice_id": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+          "description": "Id of the invoice the payment applies to."
+        },
+        "amount": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Payment amount received (must be > 0)."
+        },
+        "payment_date": {
+          "description": "Date the payment was received, YYYY-MM-DD. Defaults to today.",
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "method": {
+          "description": "Payment method. Defaults to \"other\".",
+          "type": "string",
+          "enum": [
+            "cash",
+            "check",
+            "bank_transfer",
+            "credit_card",
+            "stripe",
+            "paypal",
+            "other"
+          ]
+        },
+        "notes": {
+          "description": "Optional notes about the payment.",
+          "type": "string",
+          "maxLength": 2000
+        },
+        "reference_number": {
+          "description": "Optional reference/check/transaction number.",
+          "type": "string",
+          "maxLength": 100
+        }
+      },
+      "required": [
+        "request_id",
+        "invoice_id",
+        "amount"
+      ],
+      "$schema": "https://json-schema.org/draft/2020-12/schema"
+    }
+  },
+  {
+    "name": "record_task_usage",
+    "title": "record task usage",
+    "description": "Record a known provider cost in the policy currency, with a unique provider request reference and evidence source. This is reported cost, not independently verified by Billr. Do not invent prices or submit estimates. Log before completing the task.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "business_id": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        },
+        "request_id": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+          "description": "Stable ID for this operation. Reuse on retries with identical input."
+        },
+        "task_id": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        },
+        "provider": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "model": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "provider_request_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "cost": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 99999999
+        },
+        "currency": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$"
+        },
+        "input_tokens": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "output_tokens": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        }
+      },
+      "required": [
+        "request_id",
+        "task_id",
+        "provider",
+        "provider_request_id",
+        "cost",
+        "currency",
+        "source"
+      ],
+      "$schema": "https://json-schema.org/draft/2020-12/schema"
+    }
+  },
+  {
+    "name": "revenue_summary",
+    "title": "Revenue Summary",
+    "description": "Summarize invoiced, paid, outstanding, and overdue amounts for one of the caller's businesses over a period (default this_year), plus status counts and the top 5 clients by invoiced amount. Draft and cancelled invoices are excluded from all dollar totals (but still counted in by_status); \"overdue\" means balance still due, due date past, and status is sent/viewed/partial; overdue_total is a subset of outstanding_total, not additional to it.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "business_id": {
+          "description": "Id of the business to summarize. Optional when the API key is scoped to exactly one business; required if scoped to multiple.",
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        },
+        "period": {
+          "description": "Reporting period, matched against each invoice's issue_date: \"this_month\", \"last_month\", \"this_year\" (default), or \"all\" (no date filter).",
+          "type": "string",
+          "enum": [
+            "this_month",
+            "last_month",
+            "this_year",
+            "all"
+          ]
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema"
+    }
+  },
+  {
+    "name": "send_estimate",
+    "title": "Send Estimate",
+    "description": "Email an estimate to its client and advance a draft to \"sent\". Defaults the recipient to the client's own email. Use it once the quote is final; it does not create an invoice and takes no payment. Refuses estimates that were already converted to an invoice.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "request_id": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+          "description": "Stable delivery ID. Reuse on retries with identical recipients and content."
+        },
+        "estimate_id": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+          "description": "Id of the estimate to send."
+        },
+        "to": {
+          "description": "Recipient email. Defaults to the estimate's client email.",
+          "type": "string",
+          "format": "email",
+          "pattern": "^(?!\\.)(?!.*\\.\\.)([A-Za-z0-9_'+\\-\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+        },
+        "cc": {
+          "description": "Cc recipients, at most 10.",
+          "maxItems": 10,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "email",
+            "pattern": "^(?!\\.)(?!.*\\.\\.)([A-Za-z0-9_'+\\-\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+          }
+        },
+        "bcc": {
+          "description": "Bcc recipients, at most 10.",
+          "maxItems": 10,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "email",
+            "pattern": "^(?!\\.)(?!.*\\.\\.)([A-Za-z0-9_'+\\-\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+          }
+        },
+        "subject": {
+          "description": "Email subject. Defaults to \"Estimate <number> from <business>\".",
+          "type": "string",
+          "maxLength": 200
+        },
+        "message": {
+          "description": "Optional personal message shown above the quote summary.",
+          "type": "string",
+          "maxLength": 2000
+        }
+      },
+      "required": [
+        "request_id",
+        "estimate_id"
+      ],
+      "$schema": "https://json-schema.org/draft/2020-12/schema"
+    }
+  },
+  {
+    "name": "send_invoice",
+    "title": "Send Invoice",
+    "description": "Email an invoice (with PDF attached) to its client, advancing a draft to \"sent\"; defaults the recipient to the client's own email if `to` is omitted. Refuses to send invoices that are already paid or cancelled.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "request_id": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+          "description": "Stable delivery ID. Reuse on retries with identical recipients and content."
+        },
+        "invoice_id": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+          "description": "Id of the invoice to send."
+        },
+        "to": {
+          "description": "Recipient email. Defaults to the invoice's client email if omitted.",
+          "type": "string",
+          "format": "email",
+          "pattern": "^(?!\\.)(?!.*\\.\\.)([A-Za-z0-9_'+\\-\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+        },
+        "cc": {
+          "description": "Cc recipients. At most 10; split larger sends across multiple calls.",
+          "maxItems": 10,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "email",
+            "pattern": "^(?!\\.)(?!.*\\.\\.)([A-Za-z0-9_'+\\-\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+          }
+        },
+        "bcc": {
+          "description": "Bcc recipients. At most 10; split larger sends across multiple calls.",
+          "maxItems": 10,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "email",
+            "pattern": "^(?!\\.)(?!.*\\.\\.)([A-Za-z0-9_'+\\-\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+          }
+        },
+        "subject": {
+          "description": "Email subject. Defaults to \"Invoice <number> from <business>\".",
+          "type": "string",
+          "maxLength": 200
+        },
+        "message": {
+          "description": "Optional personal message included above the invoice summary.",
+          "type": "string",
+          "maxLength": 2000
+        }
+      },
+      "required": [
+        "request_id",
+        "invoice_id"
+      ],
+      "$schema": "https://json-schema.org/draft/2020-12/schema"
+    }
+  },
+  {
+    "name": "start_task",
+    "title": "start task",
+    "description": "Start or resume active work. Send heartbeat_task every 30 to 60 seconds. Only the first 120 seconds after a heartbeat count; waiting for a user should be paused.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "business_id": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        },
+        "request_id": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+          "description": "Stable ID for this operation. Reuse on retries with identical input."
+        },
+        "task_id": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        }
+      },
+      "required": [
+        "request_id",
+        "task_id"
+      ],
+      "$schema": "https://json-schema.org/draft/2020-12/schema"
+    }
+  },
+  {
+    "name": "update_client",
+    "title": "Update Client",
+    "description": "Update fields on an existing client. Only fields provided are changed; omitted fields are left as-is. The client must belong to one of the caller's businesses.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "client_id": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+          "description": "Id of the client to update."
+        },
+        "name": {
+          "description": "Client name (person or company).",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "email": {
+          "description": "Client's email address.",
+          "type": "string",
+          "maxLength": 320,
+          "format": "email",
+          "pattern": "^(?!\\.)(?!.*\\.\\.)([A-Za-z0-9_'+\\-\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+        },
+        "phone": {
+          "description": "Client's phone number.",
+          "type": "string",
+          "maxLength": 50
+        },
+        "address_line1": {
+          "description": "Street address, line 1.",
+          "type": "string",
+          "maxLength": 200
+        },
+        "address_line2": {
+          "description": "Street address, line 2 (suite, unit, etc).",
+          "type": "string",
+          "maxLength": 200
+        },
+        "city": {
+          "description": "City.",
+          "type": "string",
+          "maxLength": 100
+        },
+        "state": {
+          "description": "State or province.",
+          "type": "string",
+          "maxLength": 100
+        },
+        "postal_code": {
+          "description": "Postal or ZIP code.",
+          "type": "string",
+          "maxLength": 20
+        },
+        "country": {
+          "description": "Country.",
+          "type": "string",
+          "maxLength": 100
+        },
+        "currency": {
+          "description": "ISO currency code for this client, e.g. \"USD\".",
+          "type": "string",
+          "maxLength": 10
+        },
+        "notes": {
+          "description": "Free-form internal notes about this client.",
+          "type": "string",
+          "maxLength": 2000
+        }
+      },
+      "required": [
+        "client_id"
+      ],
+      "$schema": "https://json-schema.org/draft/2020-12/schema"
+    }
+  },
+  {
+    "name": "update_draft_estimate",
+    "title": "Update Draft Estimate",
+    "description": "Update a draft estimate: replace its line items and/or adjust dates, notes, terms, discount, tax, or shipping. Refuses to touch an estimate that has already been sent, accepted, declined, or converted, because the client has seen those numbers; create a new estimate instead.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "estimate_id": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+          "description": "Id of the draft estimate to update."
+        },
+        "line_items": {
+          "description": "If provided, replaces ALL existing line items and recomputes totals. Lines may reference saved items via item_id / item_name.",
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "description": {
+                "description": "Line item description. Required unless item_id or item_name is given, in which case it defaults to the saved item's description (or its name if it has none).",
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500
+              },
+              "quantity": {
+                "description": "Quantity (must be > 0). Defaults to 1.",
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "maximum": 99999999,
+                "multipleOf": 1e-06
+              },
+              "rate": {
+                "description": "Rate per unit. Required unless item_id or item_name is given, in which case it defaults to the saved item's rate. Pass it explicitly to override the saved rate for this line only.",
+                "type": "number",
+                "minimum": 0,
+                "maximum": 99999999,
+                "multipleOf": 1e-06
+              },
+              "item_id": {
+                "description": "Id of a saved item (from list_items) to price this line from. Takes precedence over item_name.",
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "item_name": {
+                "description": "Exact (case-insensitive) name of a saved item to price this line from, e.g. \"Consulting\". Use list_items first if you are unsure of the exact name.",
+                "type": "string",
+                "maxLength": 200
+              }
+            }
+          }
+        },
+        "issue_date": {
+          "description": "Replaces the issue date, YYYY-MM-DD.",
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "expiry_date": {
+          "description": "Replaces the expiry date, YYYY-MM-DD.",
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "notes": {
+          "description": "Replaces the notes field.",
+          "type": "string",
+          "maxLength": 2000
+        },
+        "terms": {
+          "description": "Replaces the terms field.",
+          "type": "string",
+          "maxLength": 2000
+        },
+        "discount_type": {
+          "description": "Discount type. If provided alone, the existing discount_value is reinterpreted under the new type (a stored fixed 50 discount becomes a 50% discount). Pass discount_value together with discount_type to set both explicitly.",
+          "type": "string",
+          "enum": [
+            "percentage",
+            "fixed"
+          ]
+        },
+        "discount_value": {
+          "description": "Discount value: a percent (0-100) if discount_type is \"percentage\", or a flat amount otherwise. Defaults to 0.",
+          "type": "number",
+          "minimum": 0
+        },
+        "tax_rate": {
+          "description": "Tax rate percent, applied after the discount. Defaults to 0.",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "shipping_amount": {
+          "description": "Flat shipping amount, added after tax. Defaults to 0.",
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "estimate_id"
+      ],
+      "$schema": "https://json-schema.org/draft/2020-12/schema"
+    }
+  },
+  {
+    "name": "update_draft_invoice",
+    "title": "Update Draft Invoice",
+    "description": "Update a draft invoice: replace its line items and/or adjust dates, notes, discount, tax, or shipping. Refuses to modify invoices that are no longer in draft status. Cancel and recreate instead.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "invoice_id": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+          "description": "Id of the draft invoice to update."
+        },
+        "line_items": {
+          "description": "If provided, replaces ALL existing line items and recomputes totals. Lines may reference saved items via item_id / item_name.",
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "description": {
+                "description": "Line item description. Required unless item_id or item_name is given, in which case it defaults to the saved item's description (or its name if it has none).",
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500
+              },
+              "quantity": {
+                "description": "Quantity (must be > 0). Defaults to 1.",
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "maximum": 99999999,
+                "multipleOf": 1e-06
+              },
+              "rate": {
+                "description": "Rate per unit. Required unless item_id or item_name is given, in which case it defaults to the saved item's rate. Pass it explicitly to override the saved rate for this line only.",
+                "type": "number",
+                "minimum": 0,
+                "maximum": 99999999,
+                "multipleOf": 1e-06
+              },
+              "item_id": {
+                "description": "Id of a saved item (from list_items) to price this line from. Takes precedence over item_name.",
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "item_name": {
+                "description": "Exact (case-insensitive) name of a saved item to price this line from, e.g. \"Consulting\". Use list_items first if you are unsure of the exact name.",
+                "type": "string",
+                "maxLength": 200
+              }
+            }
+          }
+        },
+        "notes": {
+          "description": "Replaces the notes field.",
+          "type": "string",
+          "maxLength": 2000
+        },
+        "issue_date": {
+          "description": "Replaces the issue date, YYYY-MM-DD.",
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "due_date": {
+          "description": "Replaces the due date, YYYY-MM-DD.",
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "discount_type": {
+          "description": "Discount type. Defaults to \"percentage\". If provided alone, the existing discount_value is reinterpreted under the new type (e.g. a stored fixed $50 discount becomes a 50% discount). Pass discount_value together with discount_type to set both explicitly.",
+          "type": "string",
+          "enum": [
+            "percentage",
+            "fixed"
+          ]
+        },
+        "discount_value": {
+          "description": "Discount value: a percent (0-100) if discount_type is \"percentage\", or a flat amount otherwise. Defaults to 0.",
+          "type": "number",
+          "minimum": 0
+        },
+        "tax_rate": {
+          "description": "Tax rate percent, applied after the discount. Defaults to 0.",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "shipping_amount": {
+          "description": "Flat shipping amount, added after tax. Defaults to 0.",
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "invoice_id"
+      ],
+      "$schema": "https://json-schema.org/draft/2020-12/schema"
+    }
+  },
+  {
+    "name": "update_engagement",
+    "title": "Update Engagement",
+    "description": "Correct the details around an engagement: its name, the dates it runs between, or its internal notes. Fields left out are kept as they are. The agreed total, the currency, the billing mode and the schedule are deliberately not editable here, because changing an agreed number after work has been billed against it is a renegotiation rather than an edit. Nothing is sent to anyone.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "request_id": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+          "description": "Stable request ID. Reuse with identical input on retries."
+        },
+        "engagement_id": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+          "description": "Id of the engagement to update."
+        },
+        "name": {
+          "description": "Corrected name for the engagement.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "starts_on": {
+          "description": "Corrected start date, YYYY-MM-DD.",
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "target_end": {
+          "description": "Corrected target end date, YYYY-MM-DD.",
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "notes": {
+          "description": "Corrected internal notes. Never shown to the client.",
+          "type": "string",
+          "maxLength": 2000
+        }
+      },
+      "required": [
+        "request_id",
+        "engagement_id"
+      ],
+      "$schema": "https://json-schema.org/draft/2020-12/schema"
+    }
+  },
+  {
+    "name": "update_expense",
+    "title": "Update Expense",
+    "description": "Correct a single logged expense: amount, description, vendor, category, date, client, or billable flag. Use it to fix a mistake before the cost is rebilled. Refuses expenses already attached to an invoice, since changing those would not change the invoice the client received.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "expense_id": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+          "description": "Id of the expense to update, from list_expenses or list_unbilled. Exactly one expense is affected."
+        },
+        "description": {
+          "description": "New description of what the expense was for.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "amount": {
+          "description": "New expense amount, must be > 0. Keeps the existing currency.",
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "date": {
+          "description": "New expense date, YYYY-MM-DD.",
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "category": {
+          "description": "New expense category.",
+          "type": "string",
+          "enum": [
+            "office",
+            "travel",
+            "meals",
+            "supplies",
+            "utilities",
+            "software",
+            "marketing",
+            "professional",
+            "insurance",
+            "mileage",
+            "other"
+          ]
+        },
+        "vendor": {
+          "description": "New vendor or merchant name.",
+          "type": "string",
+          "maxLength": 200
+        },
+        "notes": {
+          "description": "New internal notes; not shown to the client.",
+          "type": "string",
+          "maxLength": 2000
+        },
+        "client_id": {
+          "description": "Reassign to this client id. Provide this or client_name.",
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        },
+        "client_name": {
+          "description": "Reassign to this exact (case-insensitive) client name. Provide this or client_id.",
+          "type": "string",
+          "maxLength": 200
+        },
+        "billable": {
+          "description": "New billable flag. Non-billable expenses never appear in list_unbilled.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "expense_id"
+      ],
+      "$schema": "https://json-schema.org/draft/2020-12/schema"
+    }
+  },
+  {
+    "name": "update_item",
+    "title": "Update Saved Item",
+    "description": "Change a saved item's rate, name, description, unit, or active flag. Identify it by item_id or by exact item_name. Changes apply to FUTURE invoices and estimates only; already-issued documents keep the rate they were billed at, so do not use this to correct an invoice (use update_draft_invoice).",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "business_id": {
+          "description": "Id of the business the item belongs to. Optional when the API key is scoped to exactly one business; required if scoped to multiple.",
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        },
+        "item_id": {
+          "description": "Id of the item to update. Provide this or item_name.",
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        },
+        "item_name": {
+          "description": "Exact (case-insensitive) current item name. Provide this or item_id.",
+          "type": "string",
+          "maxLength": 200
+        },
+        "name": {
+          "description": "New catalog name.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "rate": {
+          "description": "New default rate per unit.",
+          "type": "number",
+          "minimum": 0
+        },
+        "description": {
+          "description": "New description used as invoice line text.",
+          "type": "string",
+          "maxLength": 500
+        },
+        "unit": {
+          "description": "New unit the rate is quoted in.",
+          "type": "string",
+          "enum": [
+            "hour",
+            "day",
+            "week",
+            "month",
+            "project",
+            "item",
+            "unit"
+          ]
+        },
+        "type": {
+          "description": "New item type.",
+          "type": "string",
+          "enum": [
+            "service",
+            "product"
+          ]
+        },
+        "tax_rate": {
+          "description": "New default tax rate percent.",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "is_active": {
+          "description": "Set false to retire an item without deleting it. Retired items are hidden from list_items by default.",
+          "type": "boolean"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema"
+    }
+  },
+  {
+    "name": "update_payment",
+    "title": "Update Payment",
+    "description": "Correct a recorded payment: the date it landed, the method, the reference number, the notes, or the amount if a figure was keyed wrong. The invoice is recomputed from its live payments, so a smaller amount reopens a balance and moves a paid invoice back to partial. Use this to fix a payment whose date was recorded wrong, which otherwise puts the money in the wrong month of every revenue report. Payments collected through Stripe cannot be edited: a card payment is changed by issuing a refund in Stripe, which arrives back here as its own ledger entry. Fields left out are kept as they are.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "request_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "description": "Stable correction ID. Reuse on retries with identical input and the same answer comes back without applying the change twice."
+        },
+        "payment_id": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+          "description": "Id of the payment to correct, from the payments list in get_payment_status."
+        },
+        "payment_date": {
+          "description": "Corrected date the payment was received, YYYY-MM-DD.",
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "method": {
+          "description": "Corrected payment method. \"stripe\" is not accepted here because only the verified Stripe flow may write card entries.",
+          "type": "string",
+          "enum": [
+            "cash",
+            "check",
+            "bank_transfer",
+            "credit_card",
+            "paypal",
+            "other"
+          ]
+        },
+        "notes": {
+          "description": "Corrected notes about the payment.",
+          "type": "string",
+          "maxLength": 2000
+        },
+        "reference_number": {
+          "description": "Corrected reference, check or transaction number.",
+          "type": "string",
+          "maxLength": 100
+        },
+        "amount": {
+          "description": "Corrected amount. Must be greater than zero and must not push the invoice past its total once the other live payments are counted.",
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      },
+      "required": [
+        "request_id",
+        "payment_id"
+      ],
+      "$schema": "https://json-schema.org/draft/2020-12/schema"
+    }
+  },
+  {
+    "name": "update_time_entry",
+    "title": "Update Time Entry",
+    "description": "Correct a single logged time entry: its hours, rate, description, date, client, or billable flag. Use it to fix a mistake before the work is invoiced. Refuses entries already attached to an invoice, since changing those would not change the invoice the client received.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "time_entry_id": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+          "description": "Id of the entry to update, from list_time_entries or list_unbilled. Exactly one entry is affected."
+        },
+        "description": {
+          "description": "New description of what the time was spent on.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "hours": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 24,
+          "description": "New hours worked, > 0 and <= 24."
+        },
+        "date": {
+          "description": "New date of the work, YYYY-MM-DD.",
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "rate": {
+          "description": "New hourly rate. Setting this also recomputes the entry amount as hours * rate.",
+          "type": "number",
+          "minimum": 0
+        },
+        "client_id": {
+          "description": "Reassign to this client id. Provide this or client_name.",
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+        },
+        "client_name": {
+          "description": "Reassign to this exact (case-insensitive) client name. Provide this or client_id.",
+          "type": "string",
+          "maxLength": 200
+        },
+        "billable": {
+          "description": "New billable flag. Non-billable time never appears in list_unbilled.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "time_entry_id"
+      ],
+      "$schema": "https://json-schema.org/draft/2020-12/schema"
+    }
+  },
+  {
+    "name": "void_payment",
+    "title": "Void Payment",
+    "description": "Void a payment that should never have been recorded, with a reason. The row is kept and stays visible, struck through with its reason, but it stops counting as money: the invoice reopens for that amount and every total, report and list leaves it out. Use this for a payment entered twice, entered against the wrong invoice, or entered for money that never arrived. Payments collected through Stripe cannot be voided: refund the charge in Stripe instead, and the refund arrives back here as its own ledger entry.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "request_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "description": "Stable void ID. Reuse on retries with the same reason and the same answer comes back without voiding twice."
+        },
+        "payment_id": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+          "description": "Id of the payment to void, from the payments list in get_payment_status."
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000,
+          "description": "Why this payment is being voided. Kept on the payment and in the audit trail, and shown in the app."
+        }
+      },
+      "required": [
+        "request_id",
+        "payment_id",
+        "reason"
+      ],
+      "$schema": "https://json-schema.org/draft/2020-12/schema"
+    }
+  },
+  {
+    "name": "waive_engagement_entry",
+    "title": "Waive Engagement Entry",
+    "description": "Write off a schedule entry that will not be charged, with a reason. The entry stays in the schedule so the agreement still reads the way it was agreed, but it stops counting towards what is left to bill. Use this when part of the work was dropped or absorbed. An entry that has already been invoiced cannot be waived: that is a credit note, and it belongs on the invoice. Nothing is sent to anyone.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "request_id": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+          "description": "Stable request ID. Reuse with identical input on retries."
+        },
+        "entry_id": {
+          "type": "string",
+          "format": "uuid",
+          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+          "description": "Id of the schedule entry to waive, from get_engagement."
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000,
+          "description": "Why this money will not be charged. Kept on the entry and shown in the app."
+        }
+      },
+      "required": [
+        "request_id",
+        "entry_id",
+        "reason"
+      ],
+      "$schema": "https://json-schema.org/draft/2020-12/schema"
+    }
+  }
+]

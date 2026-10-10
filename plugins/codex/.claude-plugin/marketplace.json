@@ -1,0 +1,20 @@
+{
+  "name": "billr",
+  "interface": {
+    "displayName": "Billr"
+  },
+  "plugins": [
+    {
+      "name": "billr",
+      "source": {
+        "source": "local",
+        "path": "./billr"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

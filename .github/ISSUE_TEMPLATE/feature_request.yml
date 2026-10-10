@@ -1,0 +1,61 @@
+name: Feature request
+description: Suggest a capability or a change in behaviour.
+title: '[Feature]: '
+labels: ['enhancement']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please describe the problem before the solution. The most useful requests explain the billing situation you are in, not just the control you want added.
+
+        Large changes are best agreed in an issue before any code is written.
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What are you trying to do, and what makes it hard or impossible today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you would like to happen
+      description: Describe the behaviour you want. Be concrete.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What you tried or considered
+      description: Workarounds you are using now, and why they are not enough.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part of Billr?
+      options:
+        - Invoices and estimates
+        - Clients
+        - Time and expenses
+        - Engagements
+        - Payments and Stripe
+        - Task billing for agents
+        - MCP server or agent toolkit
+        - API keys and permissions
+        - Reports
+        - Self-hosting, Docker or migrations
+        - Something else
+    validations:
+      required: true
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope
+      options:
+        - label: This fits Billr as an internal tool, or I have said why not.
+          required: true
+  - type: checkboxes
+    id: help
+    attributes:
+      label: Would you like to work on this?
+      options:
+        - label: I am willing to open a pull request for it.

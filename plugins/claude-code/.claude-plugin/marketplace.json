@@ -1,0 +1,26 @@
+{
+  "name": "billr",
+  "owner": {
+    "name": "Billr",
+    "url": "https://github.com/ethanplusai/billr"
+  },
+  "description": "Billr: invoicing and billing for independent operators and small studios, as a Claude Code plugin.",
+  "plugins": [
+    {
+      "name": "billr",
+      "source": "./billr",
+      "displayName": "Billr",
+      "description": "Bill clients through Billr: log billable time and expenses, draft invoices and estimates, check balances and unbilled work, run agent task billing sessions, and work engagement schedules. Reads freely, drafts on request, and never sends anything to a client.",
+      "version": "1.0.0",
+      "author": {
+        "name": "Billr",
+        "url": "https://github.com/ethanplusai/billr"
+      },
+      "homepage": "https://github.com/ethanplusai/billr/blob/main/plugins/README.md",
+      "repository": "https://github.com/ethanplusai/billr",
+      "license": "Apache-2.0",
+      "category": "productivity",
+      "keywords": ["invoicing", "billing", "freelance", "time-tracking", "mcp"]
+    }
+  ]
+}

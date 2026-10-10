@@ -1,0 +1,81 @@
+name: Bug report
+description: Something in this source behaves incorrectly and you can reproduce it.
+title: '[Bug]: '
+labels: ['bug']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report this.
+
+        **Do not use this form for a security problem.** Report vulnerabilities privately through this repository's Security tab; see the security policy.
+
+        Never paste a service-role key, a Stripe secret, an API key, a database URL with a password, or a real invoice or client record. Reproduce with fictional data.
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Before you file
+      options:
+        - label: This is not a security vulnerability.
+          required: true
+        - label: I searched existing issues and did not find this one.
+          required: true
+        - label: My reproduction uses fictional data and contains no secrets.
+          required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What did you expect, and what happened instead?
+      placeholder: Converting an estimate to an invoice kept the estimate open.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: The exact commands or clicks, from a known starting state.
+      placeholder: |
+        1. npm run setup:local
+        2. Create a business and a client
+        3. Create an estimate, approve it, convert it
+        4. Reload the estimates list
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Output, logs or error text
+      description: Paste the relevant output. Remove secrets first. This is rendered as a code block.
+      render: shell
+  - type: dropdown
+    id: install
+    attributes:
+      label: How are you running Billr?
+      options:
+        - Local development (npm run setup:local)
+        - Docker or Compose
+        - Another way
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The commit you are on (git rev-parse --short HEAD).
+      placeholder: 'commit abc1234'
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Node.js version, operating system, browser if relevant.
+      placeholder: 'Node 22.23.1, macOS 15, Firefox 130'
+    validations:
+      required: true
+  - type: textarea
+    id: area
+    attributes:
+      label: Anything else
+      description: Whether it affects the workspace, the MCP tools, a migration, the agent toolkit, or several of them.

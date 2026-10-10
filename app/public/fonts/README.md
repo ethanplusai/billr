@@ -1,0 +1,1 @@
+Geist and Geist Mono are bundled at build time through Next.js. Upstream font license: https://github.com/vercel/geist-font/blob/main/LICENSE.txt. Their SIL Open Font License is retained here and remains separate from the application Apache-2.0 license.
