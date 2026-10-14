@@ -465,7 +465,7 @@ export function EstimateForm({
                             mode="single"
                             selected={field.value}
                             onSelect={field.onChange}
-                            initialFocus
+                            autoFocus
                           />
                         </PopoverContent>
                       </Popover>
@@ -504,7 +504,7 @@ export function EstimateForm({
                             mode="single"
                             selected={field.value}
                             onSelect={field.onChange}
-                            initialFocus
+                            autoFocus
                           />
                         </PopoverContent>
                       </Popover>
