@@ -216,6 +216,7 @@ export function generatedFiles() {
     'plugins/claude-code/billr/skills/billr',
     'plugins/codex/billr/skills/billr',
     'plugins/openclaw/billr',
+    'plugins/cursor/skills/billr',
   ]) {
     files.set(`${dir}/SKILL.md`, stamped(skill, `${SHARED}/SKILL.md`))
     files.set(

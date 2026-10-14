@@ -20,8 +20,8 @@ describe('installation isolation', () => {
     vi.stubEnv('NEXT_PUBLIC_APP_URL', value)
     expect(() => appOrigin()).toThrow()
   })
-  it('points the docs links at the repository', () => {
-    expect(DOCS_URL).toBe('https://github.com/ethanplusai/billr#readme')
-    expect(AGENT_DOCS_URL).toMatch(/^https:\/\/github\.com\/ethanplusai\/billr\//)
+  it('points help links at the public documentation', () => {
+    expect(DOCS_URL).toBe('https://billr.cc/docs')
+    expect(AGENT_DOCS_URL).toBe('https://billr.cc/docs/connect')
   })
 })

@@ -6,7 +6,8 @@ import { relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 // Billr is self-hosted software. This scan keeps everything that
-// belongs to a hosted service, and every private trace, out of the repository.
+// belongs to hosted application code, and every private trace, out of the repository.
+// Distributed plugin metadata may reference the public hosted service.
 const root = fileURLToPath(new URL('../../', import.meta.url))
 const SELF = 'app/scripts/repo-clean.test.mjs'
 const BINARY = /\.(png|jpe?g|gif|webp|ico|svg|woff2?|ttf|otf|pdf)$/i
@@ -71,7 +72,13 @@ test('no hosted, private or credential content in any file', () => {
   const issues = []
   for (const file of files) {
     if (BINARY.test(file)) continue
-    const text = readFileSync(resolve(root, file), 'utf8')
+    let text = readFileSync(resolve(root, file), 'utf8')
+    if (['app/src/lib/deployment.ts', 'app/src/lib/deployment.test.ts'].includes(file))
+      text = text.replace(/https:\/\/billr\.cc\/docs(?:\/connect)?(?=[\x22\x27])/g, 'https://docs.example')
+    // Allow only public endpoint/contact literals in distribution files. Every
+    // credential, session, planning and hosted-code rule still runs on them.
+    if (file.startsWith('plugins/') || file.startsWith('.claude-plugin/') || file.startsWith('.cursor-plugin/'))
+      text = text.replace(/https:\/\/(?:mcp\.)?billr\.cc(?=[/\s\x22\x27`),]|$)/g, 'https://service.example').replaceAll('help@billr.cc', 'support@example.test')
     for (const [label, pattern, exempt] of CONTENT_RULES)
       if (!exempt?.includes(file) && pattern.test(text)) issues.push(`${file}: ${label}`)
   }

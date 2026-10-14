@@ -52,8 +52,9 @@ asked to, in the turn you are asked.
   Bill entries by passing `engagement_entry_ids` to `create_invoice`.
   `complete_engagement` cannot be reopened.
 - Errors: 429 means the 120 requests per 60 seconds per key limit, so back off
-  for `Retry-After`. "API key is expired, revoked or lacks permission for
-  this tool" means stop and ask for a reconnect, not a retry.
+  for `Retry-After`. `plan_required` means the hosted plan lapsed and writes
+  are refused while reads keep working. "API key is expired, revoked or lacks
+  permission for this tool" means stop and ask for a reconnect, not a retry.
 - Never write a Billr key into a file, a commit or a reply. Use
   `bearer_token_env_var = "BILLR_API_KEY"` so the key stays in the
   environment.

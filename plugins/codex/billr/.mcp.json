@@ -2,8 +2,8 @@
   "mcpServers": {
     "billr": {
       "type": "http",
-      "url": "http://localhost:3000/api/mcp",
-      "oauth_resource": "http://localhost:3000/api/mcp"
+      "url": "https://mcp.billr.cc",
+      "oauth_resource": "https://mcp.billr.cc"
     }
   }
 }

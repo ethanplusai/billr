@@ -22,9 +22,9 @@ export function mcpUrl(): string {
   return `${appOrigin()}/api/mcp`
 }
 
-/** Where the in-app Docs links go: the project README. */
-export const DOCS_URL = 'https://github.com/ethanplusai/billr#readme'
+/** Public documentation for the in-app help links. */
+export const DOCS_URL = 'https://billr.cc/docs'
 
 /** Step-by-step agent connection guide for each client. */
 export const AGENT_DOCS_URL =
-  'https://github.com/ethanplusai/billr/blob/main/plugins/README.md'
+  'https://billr.cc/docs/connect'
