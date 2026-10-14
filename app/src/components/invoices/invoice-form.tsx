@@ -274,7 +274,7 @@ export function InvoiceForm({
                             onSelect={(date) =>
                               field.onChange(date ? toISODate(date) : '')
                             }
-                            initialFocus
+                            autoFocus
                           />
                         </PopoverContent>
                       </Popover>
@@ -312,7 +312,7 @@ export function InvoiceForm({
                             onSelect={(date) =>
                               field.onChange(date ? toISODate(date) : '')
                             }
-                            initialFocus
+                            autoFocus
                           />
                         </PopoverContent>
                       </Popover>
