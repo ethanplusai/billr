@@ -1,19 +1,18 @@
 # Billr as an MCP server for Codex.
 #
 # Copy the table below into ~/.codex/config.toml for every project, or into a
-# trusted project's .codex/config.toml for one project. Fields as documented
-# at https://learn.chatgpt.com/docs/extend/mcp.
+# trusted project's .codex/config.toml for one project. Fields verified
+# against https://learn.chatgpt.com/docs/extend/mcp on 2026-09-23.
 #
 # This file is an example. It is never read from this repository.
 
-# --- OAuth (recommended) ---
+# --- Hosted Billr, OAuth (recommended) -------------------------------------
 # The URL is all Codex needs. Run `codex mcp login billr` once to sign in;
 # pick the business and the permissions on Billr's consent screen.
-# Your Billr's MCP URL: http://localhost:3000/api/mcp locally, https://<your-domain>/api/mcp when deployed.
 [mcp_servers.billr]
-url = "http://localhost:3000/api/mcp"
+url = "https://mcp.billr.cc"
 
-# --- API key ---
+# --- Hosted Billr, API key --------------------------------------------------
 # For a machine that cannot do a browser sign-in. Create the key under
 # Agents then API Keys, export it in the shell that starts Codex, and let
 # Codex read it from the environment. Never paste the key into this file.
@@ -21,5 +20,11 @@ url = "http://localhost:3000/api/mcp"
 #   export BILLR_API_KEY=billr_sk_...
 #
 # [mcp_servers.billr]
-# url = "https://<your-domain>/api/mcp"
+# url = "https://mcp.billr.cc"
 # bearer_token_env_var = "BILLR_API_KEY"
+
+# --- Self-hosted Billr ------------------------------------------------------
+# A self-hosted install serves the same tools at <your origin>/api/mcp.
+#
+# [mcp_servers.billr]
+# url = "https://billing.example.com/api/mcp"

@@ -7,6 +7,12 @@ alwaysApply: false
 
 # Billr
 
+Connect to hosted Billr at `https://mcp.billr.cc` using OAuth. A Billr
+account and the access required by your plan are needed; installing this
+skill does not create an account or include a subscription. Never ask for
+a password or token in chat. For self-hosting, use the operator-provided
+MCP URL instead, and confirm the intended service before authorization.
+
 Billr is an invoicing and billing system for independent operators and small
 studios. This skill covers how to use its MCP server well.
 
@@ -46,8 +52,9 @@ and never widen it beyond what the message says.
 
 ## Authentication and scopes
 
-Billr's MCP server lives at `<your install origin>/api/mcp`, for example
-`http://localhost:3000/api/mcp` on a local install. There are two ways in:
+The distributed plugin connects to `https://mcp.billr.cc`. A self-hosted
+operator may explicitly choose their own origin's `/api/mcp` endpoint.
+There are two authentication paths:
 
 - **OAuth (preferred).** The client only needs the URL. It discovers Billr's
   authorization server, registers itself, and sends the person to a consent
@@ -195,6 +202,9 @@ themselves.
 - **429 with `Retry-After: 60`.** The per-key MCP limit is 120 requests per 60
   seconds. Back off for the stated interval and batch your reads; do not
   hammer a list tool per row.
+- **`plan_required: ...`.** The hosted business has no active plan, so every
+  write is refused while reads keep working. Report it and stop writing; the
+  person fixes it in billing. This never happens on a self-hosted install.
 - **"API key is expired, revoked or lacks permission for this tool."** The key
   was revoked or expired mid-session, or the connection never had that
   permission. Stop and tell the person to reconnect or grant the permission.

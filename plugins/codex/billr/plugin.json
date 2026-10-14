@@ -1,13 +1,14 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "billr",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Bill clients through Billr: log billable time and expenses, draft invoices and estimates, check balances and unbilled work, run agent task billing sessions, and work engagement schedules. Reads freely, drafts on request, and never sends anything to a client.",
   "author": {
     "name": "Billr",
-    "url": "https://github.com/ethanplusai/billr"
+    "email": "help@billr.cc",
+    "url": "https://billr.cc"
   },
-  "homepage": "https://github.com/ethanplusai/billr/blob/main/plugins/README.md",
+  "homepage": "https://billr.cc/docs/connect",
   "repository": "https://github.com/ethanplusai/billr",
   "license": "Apache-2.0",
   "keywords": [
@@ -29,7 +30,9 @@
           "Read",
           "Write"
         ],
-        "websiteURL": "https://github.com/ethanplusai/billr",
+        "websiteURL": "https://billr.cc",
+        "privacyPolicyURL": "https://billr.cc/legal/privacy",
+        "termsOfServiceURL": "https://billr.cc/legal/terms",
         "defaultPrompt": [
           "What is ready to bill today in Billr?",
           "Show my unpaid and overdue invoices in Billr.",
