@@ -8,7 +8,7 @@ const root = fileURLToPath(new URL('../../', import.meta.url))
 const read = (path) => readFileSync(resolve(root, path), 'utf8')
 const json = (path) => JSON.parse(read(path))
 const endpoint = new URL(json('plugins/codex/billr/mcp.json').mcpServers.billr.url)
-const packages = ['plugins/claude-code/billr', 'plugins/codex/billr', 'plugins/cursor', 'plugins/openclaw/billr']
+const packages = ['plugins/codex/billr', 'plugins/openclaw/billr']
 
 test('all shipped MCP configurations use the same public HTTPS OAuth endpoint', () => {
   assert.equal(endpoint.protocol, 'https:')
@@ -16,7 +16,7 @@ test('all shipped MCP configurations use the same public HTTPS OAuth endpoint', 
   assert.equal(endpoint.password, '')
   assert.equal(endpoint.search, '')
   assert.notEqual(endpoint.hostname, 'localhost')
-  for (const file of ['plugins/claude-code/billr/.mcp.json', 'plugins/codex/billr/.mcp.json', 'plugins/codex/billr/mcp.json', 'plugins/cursor/mcp.json']) {
+  for (const file of ['plugins/codex/billr/.mcp.json', 'plugins/codex/billr/mcp.json']) {
     const servers = json(file).mcpServers
     assert.deepEqual(Object.keys(servers), ['billr'])
     assert.equal(new URL(servers.billr.url).href, endpoint.href, file)
@@ -28,22 +28,9 @@ test('all shipped MCP configurations use the same public HTTPS OAuth endpoint', 
   assert(read('plugins/shared/skill/SKILL.md').includes(endpoint.origin))
 })
 
-test('marketplaces resolve to packaged manifests with matching release versions', () => {
-  for (const [file, base, manifest] of [
-    ['.claude-plugin/marketplace.json', '', '.claude-plugin/plugin.json'],
-    ['plugins/claude-code/.claude-plugin/marketplace.json', 'plugins/claude-code', '.claude-plugin/plugin.json'],
-    ['.cursor-plugin/marketplace.json', '', '.cursor-plugin/plugin.json'],
-  ]) {
-    for (const entry of json(file).plugins) {
-      assert.equal(typeof entry.source, 'string')
-      const plugin = json(`${base}/${entry.source}/${manifest}`.replace(/^\//, ''))
-      assert.equal(plugin.name, entry.name)
-      assert.equal(plugin.version, entry.version)
-    }
-  }
+test('Codex manifests have matching release versions', () => {
   const codex = json('plugins/codex/billr/.codex-plugin/plugin.json')
   assert.equal(codex.version, json('plugins/codex/billr/plugin.json').version)
-  assert.equal(codex.version, json('plugins/cursor/.cursor-plugin/plugin.json').version)
 })
 
 test('standalone packages include instructions, licenses and only safe files', () => {
@@ -64,7 +51,6 @@ test('standalone packages include instructions, licenses and only safe files', (
 test('listing assets and component paths resolve inside each package', () => {
   for (const [directory, manifest] of [
     ['plugins/codex/billr', '.codex-plugin/plugin.json'],
-    ['plugins/cursor', '.cursor-plugin/plugin.json'],
   ]) {
     const data = json(`${directory}/${manifest}`)
     assert.equal(data.apps, undefined)

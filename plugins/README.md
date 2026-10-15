@@ -6,9 +6,9 @@ a plugin does not create an account or include a subscription.
 
 | Platform | Package / connection |
 | --- | --- |
-| Claude Code | `claude-code/billr`, listed by the root Claude marketplace |
+| Claude Code | [Hosted installation guide](https://billr.cc/docs/connect) |
 | Codex and ChatGPT | `codex/billr`, with portable and Codex manifests |
-| Cursor and Grok Bot | `cursor`, listed by the root Cursor marketplace |
+| Cursor and Grok Bot | [Hosted installation guide](https://billr.cc/docs/connect) |
 | OpenClaw | `openclaw/billr` skill; configure remote MCP separately |
 | Claude web/Desktop | Custom connector using the hosted URL |
 | Grok web / xAI API | Remote MCP connection; distinct from Grok Bot |

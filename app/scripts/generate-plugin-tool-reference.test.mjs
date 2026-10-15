@@ -58,11 +58,8 @@ test('the platform copies all carry the shared skill body', () => {
   const files = generatedFiles()
   const marker = 'Draft, never send.'
   for (const path of [
-    'plugins/claude-code/billr/skills/billr/SKILL.md',
     'plugins/codex/billr/skills/billr/SKILL.md',
     'plugins/openclaw/billr/SKILL.md',
-    'plugins/cursor/skills/billr/SKILL.md',
-    'plugins/cursor/rules/billr.mdc',
   ])
     assert(
       files.get(path)?.includes(marker),

@@ -2,10 +2,10 @@
 
 ## Grok Bot
 
-Grok Bot is a distinct product with plugins and skills. Billr's package for
-it is `../cursor/`: the Cursor marketplace manifest, generated billing skill,
-logo and hosted OAuth MCP server. Follow that directory's README for setup
-and publishing. The endpoint is `https://mcp.billr.cc`.
+Grok Bot is a distinct product with plugins and skills. The shared Cursor
+package is maintained separately from this self-hosted repository. See the
+[hosted connection guide](https://billr.cc/docs/connect) for setup.
+The endpoint is `https://mcp.billr.cc`.
 
 Before marketplace publication, test a custom MCP connection by asking Grok
 Bot to add that endpoint, then approve only the intended business and scopes

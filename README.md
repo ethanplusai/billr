@@ -143,6 +143,8 @@ codex mcp list
 
 Cursor, ChatGPT and any other client that speaks streamable HTTP MCP are covered in **Agents → Connect** and in [plugins/README.md](plugins/README.md).
 
+For hosted Billr, see the [Claude installation guide](https://billr.cc/docs/connect) and [Cursor installation guide](https://billr.cc/docs/connect). Their plugin packages are maintained separately from this self-hosted repository.
+
 **The consent screen.** Signing in shows one page that asks which business the agent may work in and which permissions it gets. Reading is the floor and cannot be unticked; send, payments and delete are off unless you turn them on. Access expires in 30 days unless the agent refreshes it, and every connection is revocable from **Agents → API Keys**.
 
 ![The Billr consent screen asking which business and which permissions to grant](docs/images/agents-consent.png)
@@ -217,7 +219,7 @@ app/
   supabase/migrations  the schema: one baseline, then numbered changes
   supabase/tests       SQL tests (npm run test:sql)
 packages/agent-kit     tool catalog, schemas and shared calculations
-plugins                agent connection packs for Claude Code, Codex, Cursor, OpenClaw, Grok
+plugins                Codex and OpenClaw packages; other agent connection guides
 docs                   self-hosting guide, fresh-machine test, screenshots
 ```
 
