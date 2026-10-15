@@ -89,10 +89,11 @@ test('no file lives at a hosted or private path', () => {
   assert.deepEqual(files.filter((file) => PATH_RULES.some((rule) => rule.test(file))), [])
 })
 
-test('the README mentions billr.cc exactly once, as the hosted version', () => {
+test('the README links to the hosted version and plugin installation guides', () => {
   const readme = readFileSync(resolve(root, 'README.md'), 'utf8')
   const lines = readme.split('\n').filter((line) => line.includes('billr.cc'))
-  assert.equal(lines.length, 1)
+  assert.equal(lines.length, 2)
+  assert.match(lines[1], /Claude installation guide.*https:\/\/billr\.cc\/docs\/connect.*Cursor installation guide/)
   assert.match(lines[0], /Prefer not to run it yourself\? \[billr\.cc\]\(https:\/\/billr\.cc\) is the hosted version of Billr\./)
 })
 
@@ -110,7 +111,7 @@ test('the repository has the files a reader looks for first', () => {
     'CHANGELOG.md', '.gitignore', '.editorconfig', '.nvmrc', '.github/workflows/ci.yml', '.github/dependabot.yml',
     '.github/ISSUE_TEMPLATE/bug_report.yml', '.github/ISSUE_TEMPLATE/feature_request.yml',
     '.github/ISSUE_TEMPLATE/config.yml', '.github/PULL_REQUEST_TEMPLATE.md', '.github/CODEOWNERS',
-    '.claude-plugin/marketplace.json', 'docs/self-hosting.md', 'docs/fresh-machine-test.md',
+    'docs/self-hosting.md', 'docs/fresh-machine-test.md',
     'docs/images/dashboard.png', 'docs/images/wordmark.png', 'app/Dockerfile', 'app/compose.yaml',
     'app/.env.example', 'app/supabase/migrations/00001_baseline.sql', 'plugins/README.md',
   ])
