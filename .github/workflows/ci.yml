@@ -47,6 +47,9 @@ jobs:
         with:
           version: 2.67.1
       - run: supabase start -x studio,realtime,imgproxy,edge-runtime,logflare,vector,supavisor
+        env:
+          # Use the official Docker Hub images when GHCR rate-limits CI.
+          SUPABASE_INTERNAL_IMAGE_REGISTRY: docker.io
       - run: npm run test:sql
       - name: Generated database types are current
         run: |
