@@ -19,7 +19,7 @@
     "doctor": "node scripts/doctor.mjs"
   },
   "dependencies": {
-    "@hookform/resolvers": "^5.9.1",
+    "@hookform/resolvers": "^6.0.2",
     "@modelcontextprotocol/server": "^2.3.1",
     "@radix-ui/react-avatar": "^1.3.1",
     "@radix-ui/react-checkbox": "^1.4.1",
